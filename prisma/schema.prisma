@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id               String   @id @default(cuid())
+  serviceType      String   // Installation or Repair
+  applianceType    String
+  applianceOther   String?
+  brand            String
+  brandOther       String?
+  serialNumber     String?
+  email            String
+  phone            String
+  serviceAddress   String
+  zipCode          String
+  consentMarketing Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@map("clients")
+}
+
+model User {
+  id       String @id @default(cuid())
+  username String @unique
+  password String
+  
+  @@map("users")
+}
