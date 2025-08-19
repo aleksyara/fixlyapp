@@ -10,10 +10,10 @@ export default function Home() {
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <Wrench className="h-7 w-7 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">FixlyAppliance</span>
-            </div>
+            </div> */}
 
             {/* Right side stacks on mobile */}
             <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
