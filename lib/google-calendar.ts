@@ -51,8 +51,8 @@ export function getCalendarConfig() {
   // Handle different private key formats
   let key = keyRaw;
   
-  // Remove any surrounding quotes
-  key = key.replace(/^["']|["']$/g, '');
+  // Remove any surrounding quotes and trim whitespace
+  key = key.replace(/^["']|["']$/g, '').trim();
   
   // If the key contains literal \n sequences, convert them to actual newlines
   if (key.includes('\\n')) {
@@ -79,18 +79,32 @@ export function getCalendarConfig() {
     }
   }
   
-  // Ensure proper formatting
+  // Ensure proper formatting with newlines
   if (key.includes('-----BEGIN PRIVATE KEY-----') && !key.includes('\n')) {
     // Key has headers but no newlines, add them
     key = key.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n');
     key = key.replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
   }
   
+  // Additional fix: ensure the key content is properly formatted
+  if (key.includes('-----BEGIN PRIVATE KEY-----') && key.includes('-----END PRIVATE KEY-----')) {
+    const beginIndex = key.indexOf('-----BEGIN PRIVATE KEY-----');
+    const endIndex = key.indexOf('-----END PRIVATE KEY-----');
+    const header = key.substring(0, beginIndex + 27);
+    const footer = key.substring(endIndex);
+    const content = key.substring(beginIndex + 27, endIndex).trim();
+    
+    // Reconstruct with proper formatting
+    key = `${header}\n${content}\n${footer}`;
+  }
+  
   console.log('[google-calendar] Key format check:', {
     hasBegin: key.includes('-----BEGIN PRIVATE KEY-----'),
     hasEnd: key.includes('-----END PRIVATE KEY-----'),
     hasNewlines: key.includes('\n'),
-    keyLength: key.length
+    keyLength: key.length,
+    firstLine: key.split('\n')[0],
+    lastLine: key.split('\n').slice(-1)[0]
   });
   
   return { CALENDAR_ID, TZ, email, key };
