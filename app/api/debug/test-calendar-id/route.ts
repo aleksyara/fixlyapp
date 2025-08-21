@@ -20,7 +20,6 @@ export async function GET() {
         calendarId: currentCalendarId,
         calendarSummary: calendarDetails.data.summary,
         calendarDescription: calendarDetails.data.description,
-        accessRole: calendarDetails.data.accessRole,
         primary: calendarDetails.data.primary,
         message: 'Calendar is accessible'
       });
