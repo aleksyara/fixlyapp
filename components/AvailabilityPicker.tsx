@@ -19,19 +19,15 @@ export default function AvailabilityPicker({ date, value, onSelect }: Props) {
 
   // Memoize the fetch function to prevent unnecessary re-renders
   const fetchAvailability = useCallback(async (targetDate: string) => {
-    // Don't fetch if we already have data for this date
-    if (lastFetchedDate === targetDate && slots.length > 0) {
-      return;
-    }
-
+    // Always fetch fresh data for the selected date
     try {
       setLoading(true);
       setError(null);
       
-      const res = await fetch(`/api/availability?date=${encodeURIComponent(targetDate)}`, {
+      const res = await fetch(`/api/availability?date=${encodeURIComponent(targetDate)}&refresh=true`, {
         headers: { accept: 'application/json' },
-        // Add cache control to leverage browser caching
-        cache: 'default'
+        // Don't use browser cache to ensure fresh data
+        cache: 'no-store'
       });
       
       const json = await safeJson<{ slots: string[] }>(res);

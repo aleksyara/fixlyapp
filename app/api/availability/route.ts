@@ -1,15 +1,23 @@
 import { NextResponse } from 'next/server';
-import { freeSlotsForDate } from '@/lib/freebusy';
+import { freeSlotsForDate, clearAvailabilityCacheForDate } from '@/lib/freebusy';
 import { getCalendarConfig } from '@/lib/google-calendar';
 
 export async function GET(req: Request) {
   try {
-    const date = new URL(req.url).searchParams.get('date');
+    const url = new URL(req.url);
+    const date = url.searchParams.get('date');
+    const refresh = url.searchParams.get('refresh') === 'true';
+    
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return NextResponse.json({ error: 'Missing or invalid date' }, { status: 400 });
     }
     
-    console.log(`[availability] Fetching slots for date: ${date}`);
+    console.log(`[availability] Fetching slots for date: ${date}${refresh ? ' (forced refresh)' : ''}`);
+    
+    // Clear cache if refresh is requested
+    if (refresh) {
+      clearAvailabilityCacheForDate(date);
+    }
     
     // Test Google Calendar configuration first
     try {
@@ -26,11 +34,11 @@ export async function GET(req: Request) {
     const slots = await freeSlotsForDate(date);
     console.log(`[availability] Found ${slots.length} available slots for ${date}`);
     
-    // Create response with caching headers
+    // Create response with shorter cache headers for more real-time data
     const response = NextResponse.json({ slots });
     
-    // Add cache headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    // Add cache headers for better performance (reduced cache time)
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
     response.headers.set('Vary', 'Accept');
     
     return response;

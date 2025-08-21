@@ -4,7 +4,7 @@ import { slotBoundsUTC, isAllowedDayLocal, DAY_SLOTS } from './availability';
 
 // Simple in-memory cache for availability data
 const availabilityCache = new Map<string, { slots: string[]; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 1 * 60 * 1000; // 1 minute (reduced from 5 minutes)
 
 // Track ongoing requests to prevent duplicate API calls
 const ongoingRequests = new Map<string, Promise<string[]>>();
@@ -102,4 +102,12 @@ function overlaps(busyStart: string, busyEnd: string, s: string, e: string) {
 export function clearAvailabilityCache() {
   availabilityCache.clear();
   ongoingRequests.clear();
+  console.log('[freebusy] Cache cleared');
+}
+
+// Function to clear cache for a specific date
+export function clearAvailabilityCacheForDate(isoDate: string) {
+  availabilityCache.delete(isoDate);
+  ongoingRequests.delete(isoDate);
+  console.log(`[freebusy] Cache cleared for date: ${isoDate}`);
 }
