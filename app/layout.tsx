@@ -21,7 +21,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-dvh bg-background text-foreground antialiased`}>
+      <body 
+        className={`${inter.className} min-h-dvh bg-background text-foreground antialiased`}
+        suppressHydrationWarning={true}
+      >
         <SiteHeader />  {/* ← header lives here */}
         <main className="p-4">{children}</main>
       </body>

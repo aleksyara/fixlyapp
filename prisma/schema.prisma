@@ -3,13 +3,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model Client {
   id               String   @id @default(cuid())
-  serviceType      String   // Installation or Repair
+  serviceType      String
   applianceType    String
   applianceOther   String?
   brand            String
@@ -22,7 +22,7 @@ model Client {
   consentMarketing Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-  
+
   @@map("clients")
 }
 
@@ -30,6 +30,34 @@ model User {
   id       String @id @default(cuid())
   username String @unique
   password String
-  
+
   @@map("users")
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELED
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  googleEventId   String        @unique     // ID from Google Calendar
+  date            String                     // "YYYY-MM-DD" (local date)
+  startTime       String                     // "HH:mm" (24h)
+  durationMinutes Int                         // 60 by default
+  customerName    String?
+  customerEmail   String
+  phone           String
+  serviceType     String
+  applianceType   String
+  brand           String
+  serviceAddress  String
+  zipCode         String
+  status          BookingStatus @default(CONFIRMED)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([date])     // handy for month views
+  @@index([status])   // quick querying
+  @@map("bookings")
 }

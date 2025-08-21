@@ -44,7 +44,7 @@ type LogoProps = {
   withText?: boolean;
 };
 
-export default function Logo({ size = 100, withText = false }: LogoProps) {
+export default function Logo({ size = 150, withText = false }: LogoProps) {
   return (
     <Link
       href="/"
