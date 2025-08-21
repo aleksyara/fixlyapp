@@ -48,8 +48,51 @@ export function getCalendarConfig() {
     throw new Error('Missing Google env vars (service account or calendar id).');
   }
 
-  // turn "\n" sequences back into real newlines
-  const key = keyRaw.replace(/\\n/g, '\n');
+  // Handle different private key formats
+  let key = keyRaw;
+  
+  // Remove any surrounding quotes
+  key = key.replace(/^["']|["']$/g, '');
+  
+  // If the key contains literal \n sequences, convert them to actual newlines
+  if (key.includes('\\n')) {
+    key = key.replace(/\\n/g, '\n');
+  }
+  
+  // If the key doesn't start with -----BEGIN PRIVATE KEY-----, try different approaches
+  if (!key.includes('-----BEGIN PRIVATE KEY-----')) {
+    try {
+      // Try to decode as base64
+      const decoded = Buffer.from(key, 'base64').toString('utf8');
+      if (decoded.includes('-----BEGIN PRIVATE KEY-----')) {
+        key = decoded;
+      }
+    } catch (e) {
+      // If base64 decoding fails, try to construct the key manually
+      console.warn('[google-calendar] Failed to decode private key as base64, trying manual construction');
+      
+      // Check if it looks like a base64-encoded key without headers
+      if (key.length > 1000 && /^[A-Za-z0-9+/=]+$/.test(key)) {
+        // This looks like a base64 key without headers, add them
+        key = `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
+      }
+    }
+  }
+  
+  // Ensure proper formatting
+  if (key.includes('-----BEGIN PRIVATE KEY-----') && !key.includes('\n')) {
+    // Key has headers but no newlines, add them
+    key = key.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n');
+    key = key.replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
+  }
+  
+  console.log('[google-calendar] Key format check:', {
+    hasBegin: key.includes('-----BEGIN PRIVATE KEY-----'),
+    hasEnd: key.includes('-----END PRIVATE KEY-----'),
+    hasNewlines: key.includes('\n'),
+    keyLength: key.length
+  });
+  
   return { CALENDAR_ID, TZ, email, key };
 }
 

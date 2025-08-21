@@ -7,18 +7,19 @@ import { prisma } from '@/lib/prisma';
 import { slotBoundsUTC } from '@/lib/availability';
 
 // DELETE /api/booking/:id (Google eventId)
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const cal = calendarClient();
   const { CALENDAR_ID } = getCalendarConfig();
 
   try {
-    await cal.events.delete({ calendarId: CALENDAR_ID, eventId: params.id });
+    await cal.events.delete({ calendarId: CALENDAR_ID, eventId: id });
   } catch {
     // If it's already gone on Google, still mark locally
   }
 
   await prisma.booking.updateMany({
-    where: { googleEventId: params.id },
+    where: { googleEventId: id },
     data: { status: 'CANCELED' },
   });
 
@@ -26,7 +27,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 }
 
 // PUT /api/booking/:id  body: { date: "YYYY-MM-DD", time: "HH:mm" }
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { date, time } = await req.json().catch(() => ({} as any));
   if (!date || !time) {
     return NextResponse.json({ error: 'date/time required' }, { status: 400 });
@@ -38,7 +40,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   const ev = await cal.events.patch({
     calendarId: CALENDAR_ID,
-    eventId: params.id,
+    eventId: id,
     requestBody: {
       start: { dateTime: start, timeZone: TZ },
       end:   { dateTime: end,   timeZone: TZ },
@@ -46,7 +48,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   });
 
   await prisma.booking.updateMany({
-    where: { googleEventId: params.id },
+    where: { googleEventId: id },
     data: { date, startTime: time, status: 'CONFIRMED' },
   });
 

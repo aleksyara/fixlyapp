@@ -40,30 +40,58 @@ export async function freeSlotsForDate(isoDate: string): Promise<string[]> {
 }
 
 async function fetchAvailabilityFromGoogle(isoDate: string): Promise<string[]> {
-  const cal = calendarClient();
-  const { CALENDAR_ID } = getCalendarConfig();
+  try {
+    const cal = calendarClient();
+    const { CALENDAR_ID } = getCalendarConfig();
 
-  // Whole-day bounds in UTC for the freebusy request
-  const start = new Date(`${isoDate}T00:00:00.000Z`);
-  const end   = new Date(`${isoDate}T23:59:59.999Z`);
+    console.log(`[freebusy] Querying calendar ${CALENDAR_ID} for date ${isoDate}`);
 
-  const res = await cal.freebusy.query({
-    requestBody: {
-      timeMin: start.toISOString(),
-      timeMax: end.toISOString(),
-      items: [{ id: CALENDAR_ID }],
-    },
-  });
+    // Whole-day bounds in UTC for the freebusy request
+    const start = new Date(`${isoDate}T00:00:00.000Z`);
+    const end   = new Date(`${isoDate}T23:59:59.999Z`);
 
-  const periods = (res.data.calendars?.[CALENDAR_ID]?.busy ?? []) as Array<{ start?: string; end?: string }>;
+    console.log(`[freebusy] Time range: ${start.toISOString()} to ${end.toISOString()}`);
 
-  const available: string[] = [];
-  for (const hhmm of DAY_SLOTS) {
-    const { start: s, end: e } = slotBoundsUTC(isoDate, hhmm);
-    const busy = periods.some((p) => overlaps(p.start!, p.end!, s, e));
-    if (!busy) available.push(hhmm);
+    const res = await cal.freebusy.query({
+      requestBody: {
+        timeMin: start.toISOString(),
+        timeMax: end.toISOString(),
+        items: [{ id: CALENDAR_ID }],
+      },
+    });
+
+    console.log(`[freebusy] API response received, calendars:`, Object.keys(res.data.calendars || {}));
+
+    const periods = (res.data.calendars?.[CALENDAR_ID]?.busy ?? []) as Array<{ start?: string; end?: string }>;
+    console.log(`[freebusy] Found ${periods.length} busy periods`);
+
+    const available: string[] = [];
+    for (const hhmm of DAY_SLOTS) {
+      const { start: s, end: e } = slotBoundsUTC(isoDate, hhmm);
+      const busy = periods.some((p) => overlaps(p.start!, p.end!, s, e));
+      if (!busy) available.push(hhmm);
+    }
+    
+    console.log(`[freebusy] Available slots: ${available.join(', ')}`);
+    return available;
+  } catch (error) {
+    console.error('[freebusy] Google Calendar API error:', error);
+    
+    // Check for specific Google API errors
+    if (error instanceof Error) {
+      if (error.message.includes('403')) {
+        throw new Error('Google Calendar API: Access denied. Check calendar permissions and service account access.');
+      }
+      if (error.message.includes('404')) {
+        throw new Error('Google Calendar API: Calendar not found. Check calendar ID.');
+      }
+      if (error.message.includes('401')) {
+        throw new Error('Google Calendar API: Authentication failed. Check service account credentials.');
+      }
+    }
+    
+    throw error;
   }
-  return available;
 }
 
 function overlaps(busyStart: string, busyEnd: string, s: string, e: string) {

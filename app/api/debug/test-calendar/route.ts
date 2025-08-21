@@ -3,32 +3,54 @@ import { calendarClient, getCalendarConfig } from '@/lib/google-calendar';
 
 export async function GET() {
   try {
-    const config = getCalendarConfig();
-    const cal = calendarClient();
+    console.log('[debug] Testing Google Calendar connection...');
     
-    // Test calendar access by trying to list events
-    const response = await cal.events.list({
+    // Test 1: Check configuration
+    const config = getCalendarConfig();
+    console.log('[debug] Config loaded successfully:', {
       calendarId: config.CALENDAR_ID,
-      maxResults: 1,
-      timeMin: new Date().toISOString(),
+      timezone: config.TZ,
+      hasEmail: !!config.email,
+      hasKey: !!config.key
     });
-
+    
+    // Test 2: Test calendar client creation
+    const cal = calendarClient();
+    console.log('[debug] Calendar client created successfully');
+    
+    // Test 3: Test a simple API call
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    
+    console.log('[debug] Testing freebusy query...');
+    const res = await cal.freebusy.query({
+      requestBody: {
+        timeMin: start.toISOString(),
+        timeMax: end.toISOString(),
+        items: [{ id: config.CALENDAR_ID }],
+      },
+    });
+    
+    console.log('[debug] Freebusy query successful');
+    
     return NextResponse.json({
       success: true,
+      message: 'Google Calendar connection test successful',
       calendarId: config.CALENDAR_ID,
-      eventsFound: response.data.items?.length || 0,
-      message: 'Calendar access successful'
+      timezone: config.TZ,
+      testDate: today.toISOString(),
+      calendarsInResponse: Object.keys(res.data.calendars || {}),
+      busyPeriods: res.data.calendars?.[config.CALENDAR_ID]?.busy?.length || 0
     });
-  } catch (error: any) {
-    console.error('[test-calendar] Error:', error);
+    
+  } catch (error) {
+    console.error('[debug] Google Calendar test failed:', error);
     
     return NextResponse.json({
       success: false,
-      error: error.message,
-      code: error.code,
-      status: error.status,
-      details: error.response?.data || error.cause || 'No additional details',
-      calendarId: process.env.GOOGLE_CALENDAR_ID
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 }

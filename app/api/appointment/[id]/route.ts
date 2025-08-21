@@ -7,11 +7,12 @@ import { sendAppointmentCancellation } from '@/lib/email';
 // GET /api/appointment/[id] - Get appointment details
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const booking = await prisma.booking.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!booking) {
@@ -28,8 +29,9 @@ export async function GET(
 // PUT /api/appointment/[id] - Update appointment
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const body = await request.json();
     
@@ -49,7 +51,7 @@ export async function PUT(
 
     // Get current booking
     const currentBooking = await prisma.booking.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!currentBooking) {
@@ -85,7 +87,7 @@ export async function PUT(
 
     // Update booking in database
     const updatedBooking = await prisma.booking.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         date: isoDate,
         startTime: hhmm,
@@ -114,12 +116,13 @@ export async function PUT(
 // DELETE /api/appointment/[id] - Cancel appointment
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     // Get current booking
     const currentBooking = await prisma.booking.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!currentBooking) {
@@ -146,7 +149,7 @@ export async function DELETE(
 
     // Update booking status to cancelled
     const cancelledBooking = await prisma.booking.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { status: 'CANCELED' },
     });
 

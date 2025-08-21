@@ -1,24 +1,49 @@
 import { NextResponse } from 'next/server';
+import { calendarClient, getCalendarConfig } from '@/lib/google-calendar';
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const calendarId = searchParams.get('id');
-  
-  if (!calendarId) {
+export async function GET() {
+  try {
+    const config = getCalendarConfig();
+    const cal = calendarClient();
+    
+    // Test with the current calendar ID
+    const currentCalendarId = config.CALENDAR_ID;
+    
+    // Try to get calendar details to see if it's accessible
+    try {
+      const calendarDetails = await cal.calendars.get({
+        calendarId: currentCalendarId
+      });
+      
+      return NextResponse.json({
+        success: true,
+        calendarId: currentCalendarId,
+        calendarSummary: calendarDetails.data.summary,
+        calendarDescription: calendarDetails.data.description,
+        accessRole: calendarDetails.data.accessRole,
+        primary: calendarDetails.data.primary,
+        message: 'Calendar is accessible'
+      });
+      
+    } catch (calendarError: any) {
+      console.error('[debug] Calendar access error:', calendarError);
+      
+      return NextResponse.json({
+        success: false,
+        calendarId: currentCalendarId,
+        error: calendarError.message,
+        code: calendarError.code,
+        status: calendarError.status,
+        message: 'Calendar access failed - this might be a permissions issue'
+      }, { status: 500 });
+    }
+    
+  } catch (error) {
+    console.error('[debug] Test failed:', error);
+    
     return NextResponse.json({
-      error: 'Please provide a calendar ID as query parameter: ?id=your-calendar-id'
-    }, { status: 400 });
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
-
-  return NextResponse.json({
-    message: 'Calendar ID test',
-    providedCalendarId: calendarId,
-    instructions: [
-      '1. Copy this calendar ID',
-      '2. Update your .env.local file: GOOGLE_CALENDAR_ID=' + calendarId,
-      '3. Restart your development server',
-      '4. Test booking an appointment'
-    ],
-    note: 'Make sure to share this calendar with your service account email: fixlyappliances@green-jet-469604-i5.iam.gserviceaccount.com'
-  });
 }

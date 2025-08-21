@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { freeSlotsForDate } from '@/lib/freebusy';
+import { getCalendarConfig } from '@/lib/google-calendar';
 
 export async function GET(req: Request) {
   try {
@@ -8,7 +9,22 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Missing or invalid date' }, { status: 400 });
     }
     
+    console.log(`[availability] Fetching slots for date: ${date}`);
+    
+    // Test Google Calendar configuration first
+    try {
+      const { CALENDAR_ID } = getCalendarConfig();
+      console.log(`[availability] Calendar ID: ${CALENDAR_ID}`);
+    } catch (configError) {
+      console.error('[availability] Config error:', configError);
+      return NextResponse.json({ 
+        error: 'Google Calendar configuration error',
+        details: configError instanceof Error ? configError.message : 'Unknown config error'
+      }, { status: 500 });
+    }
+    
     const slots = await freeSlotsForDate(date);
+    console.log(`[availability] Found ${slots.length} available slots for ${date}`);
     
     // Create response with caching headers
     const response = NextResponse.json({ slots });

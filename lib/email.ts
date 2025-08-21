@@ -36,7 +36,7 @@ export async function sendAppointmentConfirmation(data: AppointmentEmailData) {
 
   try {
     const { data: emailData, error } = await resend.emails.send({
-      from: 'Fixly Appliance Service <noreply@fixlyappliances.com>',
+      from: 'Fixly Appliance Service <noreply@fixlyappliance.com>',
       to: [customerEmail],
       subject: `Appointment Confirmed - ${serviceType} for ${applianceType}`,
       html: `
@@ -133,7 +133,7 @@ export async function sendAppointmentCancellation(data: AppointmentEmailData) {
 
   try {
     const { data: emailData, error } = await resend.emails.send({
-      from: 'Fixly Appliance Service <noreply@fixlyappliances.com>',
+      from: 'Fixly Appliance Service <noreply@fixlyappliance.com>',
       to: [customerEmail],
       subject: `Appointment Cancelled - ${serviceType} for ${applianceType}`,
       html: `
