@@ -1,8 +1,8 @@
 // lib/availability.ts
 import { addMinutes } from 'date-fns';
 
-export const ALLOWED_DAY_OF_WEEK = new Set([1, 5]); // Monday, Friday
-export const DAY_SLOTS = ['09:00', '10:00', '13:00', '15:00'];
+export const ALLOWED_DAY_OF_WEEK = new Set([1, 2, 3, 4, 5, 6]); // Monday through Saturday
+export const DAY_SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 export const SLOT_MINUTES = 60;
 
 export const TZ = process.env.BOOKING_TIMEZONE || 'America/Los_Angeles';

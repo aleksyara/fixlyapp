@@ -41,17 +41,17 @@ export default function AvailabilityCalendar({ value, onChange }: Props) {
     })();
   }, [month]);
 
-  const allowMonFri = (d: Date) => {
+  const allowMonSat = (d: Date) => {
     const dow = d.getDay(); // Sun=0, Mon=1, ... Fri=5, Sat=6
-    return dow === 1 || dow === 5;
+    return dow >= 1 && dow <= 6; // Monday through Saturday
   };
 
   const disabled = [
-    // 1) Disable all non-Mon/Fri
-    (d: Date) => !allowMonFri(d),
-    // 2) If server provided a set, only allow Mon/Fri that are in it
+    // 1) Disable all non-Mon-Sat
+    (d: Date) => !allowMonSat(d),
+    // 2) If server provided a set, only allow Mon-Sat that are in it
     (d: Date) => {
-      if (availableSet.size === 0) return false; // allow all Mon/Fri if no data
+              if (availableSet.size === 0) return false; // allow all Mon-Sat if no data
       return !availableSet.has(toISODate(d));
     },
   ];
