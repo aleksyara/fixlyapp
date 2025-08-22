@@ -39,11 +39,43 @@ const SERVICE_TYPES = ['Installation','Repair'] as const;
 const isTenDigitPhone = (v: string) => /^\d{10}$/.test(v.replace(/\D/g, ''));
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
+/** Offset (ms) between UTC and a target IANA time zone at a given instant */
+function tzOffsetMs(utcInstant: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  }).formatToParts(utcInstant);
+
+  const get = (t: string) => Number(parts.find(p => p.type === t)?.value);
+  const zoned = Date.UTC(
+    get('year'), get('month') - 1, get('day'),
+    get('hour'), get('minute'), get('second')
+  );
+  return zoned - utcInstant.getTime(); // positive = zone ahead of UTC
+}
+
+/** Convert a local wall time in Pacific TZ to a UTC ISO string */
 function toLocalISO(dateStr: string, timeStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const [hh, mm] = timeStr.split(':').map(Number);
-  const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
-  return dt.toISOString();
+  // Use a much simpler approach: construct the date string with explicit timezone
+  const pacificDateTime = `${dateStr}T${timeStr}:00-08:00`; // Always use PST offset first
+  
+  // Create date and check if we need DST adjustment
+  const tempDate = new Date(pacificDateTime);
+  const year = tempDate.getFullYear();
+  const month = tempDate.getMonth() + 1; // JavaScript months are 0-based
+  
+  // Rough DST check: March 2nd Sunday to November 1st Sunday
+  // For simplicity, use March-October as DST period
+  const isDST = month >= 3 && month <= 10;
+  
+  // If DST, use PDT offset (-07:00)
+  const finalDateTime = isDST ? 
+    `${dateStr}T${timeStr}:00-07:00` : 
+    `${dateStr}T${timeStr}:00-08:00`;
+    
+  return new Date(finalDateTime).toISOString();
 }
 
 export default function AppointmentForm() {
@@ -121,34 +153,39 @@ export default function AppointmentForm() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serviceType: form.serviceType,
-          applianceType: effectiveAppliance,
-          brand: effectiveBrand,
-          serialNumber: form.serialNumber?.trim() || undefined,
-          customerName: form.customerName?.trim() || undefined,
-          customerEmail: form.email.trim(),
-          phone: form.phone,
-          serviceAddress: form.serviceAddress.trim(),
-          zipCode: form.zipCode,
-          appointmentISO,
-          durationMinutes: 60,     // fixed length
-          serviceFee: fee,
-          isOrangeCounty: isOC,
-        }),
-      });
-
+      const res = await fetch('/api/book',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            appointmentISO,
+            customerName: form.customerName,
+            customerEmail: form.email,
+            phone: form.phone,
+            serviceType: form.serviceType,
+            applianceType: effectiveAppliance,
+            brand: effectiveBrand,
+            serialNumber: form.serialNumber,
+            serviceAddress: form.serviceAddress,
+            zipCode: form.zipCode,
+            isOrangeCounty: isOC,
+            serviceFee: fee,
+            durationMinutes: 60,
+          }),
+        }
+      );
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Booking failed.');
-
-      toast.success('Appointment booked! A confirmation email is on the way.');
-      setForm((f) => ({ ...f, serialNumber: '' }));
-      if (json.htmlLink) window.open(json.htmlLink, '_blank');
+      if (!res.ok) {
+        if (json.error && json.error.includes('Maximum booking limit reached')) {
+          toast.error('You have reached the maximum limit of 3 appointments. Please cancel an existing appointment before booking a new one.');
+        } else {
+          throw new Error(json.error || 'Booking failed');
+        }
+        return;
+      }
+      window.location.href = `/appointment/success?bookingId=${json.bookingId}`;
     } catch (err: any) {
-      toast.error(err.message || 'Could not book the appointment.');
+      toast.error(err.message || 'Booking failed');
     } finally {
       setLoading(false);
     }

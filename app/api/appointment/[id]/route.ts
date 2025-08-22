@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { calendarClient, getCalendarConfig } from '@/lib/google-calendar';
 import { slotBoundsUTC } from '@/lib/availability';
-import { sendAppointmentCancellation } from '@/lib/email';
+import { sendAppointmentCancellation, sendAppointmentUpdateConfirmation } from '@/lib/email';
 
 // GET /api/appointment/[id] - Get appointment details
 export async function GET(
@@ -58,6 +58,60 @@ export async function PUT(
       return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
     }
 
+    // Check if updating would exceed the 3-booking limit
+    // Get existing bookings for this customer (excluding the current one being updated)
+    const existingBookings = await prisma.booking.findMany({
+      where: {
+        customerEmail: body.customerEmail,
+        status: 'CONFIRMED',
+        id: { not: id } // Exclude the current booking being updated
+      }
+    });
+
+    // Verify these bookings still exist in Google Calendar
+    let activeBookingsCount = 0;
+    const bookingsToCancel = [];
+
+    for (const booking of existingBookings) {
+      try {
+        // Check if the event still exists in Google Calendar
+        await cal.events.get({
+          calendarId: CALENDAR_ID as string,
+          eventId: booking.googleEventId
+        });
+        activeBookingsCount++;
+      } catch (error: any) {
+        // If event doesn't exist (404), mark booking as cancelled in database
+        if (error?.status === 404) {
+          bookingsToCancel.push(booking.id);
+        } else {
+          // For other errors, assume the booking is still active
+          activeBookingsCount++;
+        }
+      }
+    }
+
+    // Clean up cancelled bookings in database
+    if (bookingsToCancel.length > 0) {
+      await prisma.booking.updateMany({
+        where: {
+          id: { in: bookingsToCancel }
+        },
+        data: {
+          status: 'CANCELED'
+        }
+      });
+    }
+
+    if (activeBookingsCount >= 3) {
+      return NextResponse.json({ 
+        error: 'Maximum booking limit reached. You can only have 3 active appointments at a time. Please cancel an existing appointment before updating this one.' 
+      }, { status: 400 });
+    }
+
+    // Check if time has changed (for email notification)
+    const timeChanged = currentBooking.date !== isoDate || currentBooking.startTime !== hhmm;
+
     // Update Google Calendar event
     const cal = calendarClient();
     const { CALENDAR_ID, TZ } = getCalendarConfig();
@@ -103,9 +157,32 @@ export async function PUT(
       },
     });
 
+    // Send confirmation email if time changed
+    if (timeChanged) {
+      try {
+        await sendAppointmentUpdateConfirmation({
+          customerName: body.customerName || '',
+          customerEmail: body.customerEmail,
+          appointmentDate: isoDate,
+          appointmentTime: hhmm,
+          serviceType: body.serviceType,
+          applianceType: body.applianceType,
+          brand: body.brand,
+          serviceAddress: body.serviceAddress,
+          phone: body.phone,
+          eventId: currentBooking.googleEventId,
+          bookingId: updatedBooking.id,
+        });
+      } catch (emailError) {
+        console.error('Failed to send update confirmation email:', emailError);
+        // Don't fail the update if email fails
+      }
+    }
+
     return NextResponse.json({ 
       ok: true, 
-      booking: updatedBooking 
+      booking: updatedBooking,
+      timeChanged
     });
   } catch (error) {
     console.error('Error updating appointment:', error);

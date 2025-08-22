@@ -59,5 +59,6 @@ model Booking {
 
   @@index([date])     // handy for month views
   @@index([status])   // quick querying
+  @@index([customerEmail, status]) // for booking limit validation
   @@map("bookings")
 }
