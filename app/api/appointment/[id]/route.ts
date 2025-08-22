@@ -44,10 +44,21 @@ export async function PUT(
     if (isNaN(dt.getTime())) {
       return NextResponse.json({ error: 'Invalid appointmentISO date' }, { status: 400 });
     }
-
+    
+    console.log('[UPDATE] Received appointmentISO:', body.appointmentISO);
+    console.log('[UPDATE] Parsed to UTC Date:', dt.toISOString());
+    console.log('[UPDATE] Date in Pacific Time:', dt.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    
     const isoDate = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
     const hhmm = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+    
+    console.log('[UPDATE] Extracted isoDate:', isoDate);
+    console.log('[UPDATE] Extracted hhmm:', hhmm);
+    
     const { start, end } = slotBoundsUTC(isoDate, hhmm);
+    
+    console.log('[UPDATE] Final calendar start time:', start);
+    console.log('[UPDATE] Final calendar end time:', end);
 
     // Get current booking
     const currentBooking = await prisma.booking.findUnique({
@@ -58,58 +69,53 @@ export async function PUT(
       return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
     }
 
-    // Check if updating would exceed the 3-booking limit
-    // Get existing bookings for this customer (excluding the current one being updated)
-    const existingBookings = await prisma.booking.findMany({
+    // For updates: Cancel all OTHER existing bookings for this email (keep the current one being updated)
+    const cal = calendarClient();
+    const { CALENDAR_ID, TZ } = getCalendarConfig();
+    
+    const otherBookings = await prisma.booking.findMany({
       where: {
         customerEmail: body.customerEmail,
         status: 'CONFIRMED',
         id: { not: id } // Exclude the current booking being updated
+      },
+      select: {
+        id: true,
+        googleEventId: true,
+        date: true,
+        startTime: true
       }
     });
 
-    // Verify these bookings still exist in Google Calendar
-    const cal = calendarClient();
-    const { CALENDAR_ID, TZ } = getCalendarConfig();
-    
-    let activeBookingsCount = 0;
-    const bookingsToCancel = [];
-
-    for (const booking of existingBookings) {
-      try {
-        // Check if the event still exists in Google Calendar
-        await cal.events.get({
-          calendarId: CALENDAR_ID as string,
-          eventId: booking.googleEventId
-        });
-        activeBookingsCount++;
-      } catch (error: any) {
-        // If event doesn't exist (404), mark booking as cancelled in database
-        if (error?.status === 404) {
-          bookingsToCancel.push(booking.id);
-        } else {
-          // For other errors, assume the booking is still active
-          activeBookingsCount++;
-        }
-      }
-    }
-
-    // Clean up cancelled bookings in database
-    if (bookingsToCancel.length > 0) {
+    if (otherBookings.length > 0) {
+      console.log(`[UPDATE] Found ${otherBookings.length} other bookings for ${body.customerEmail}. Cancelling them...`);
+      
+      // Cancel other bookings in database
       await prisma.booking.updateMany({
         where: {
-          id: { in: bookingsToCancel }
+          customerEmail: body.customerEmail,
+          status: 'CONFIRMED',
+          id: { not: id }
         },
         data: {
           status: 'CANCELED'
         }
       });
-    }
 
-    if (activeBookingsCount >= 3) {
-      return NextResponse.json({ 
-        error: 'Maximum booking limit reached. You can only have 3 active appointments at a time. Please cancel an existing appointment before updating this one.' 
-      }, { status: 400 });
+      // Try to delete other events from Google Calendar
+      for (const booking of otherBookings) {
+        try {
+          await cal.events.delete({
+            calendarId: CALENDAR_ID as string,
+            eventId: booking.googleEventId
+          });
+          console.log(`[UPDATE] ✓ Deleted other event ${booking.googleEventId} from calendar`);
+        } catch (error: any) {
+          console.log(`[UPDATE] ⚠ Could not delete event ${booking.googleEventId}: ${error?.message}`);
+        }
+      }
+
+      console.log(`[UPDATE] ✓ Cancelled ${otherBookings.length} other bookings, keeping current booking ${id}`);
     }
 
     // Check if time has changed (for email notification)
