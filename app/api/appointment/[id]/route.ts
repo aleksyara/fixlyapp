@@ -69,6 +69,9 @@ export async function PUT(
     });
 
     // Verify these bookings still exist in Google Calendar
+    const cal = calendarClient();
+    const { CALENDAR_ID, TZ } = getCalendarConfig();
+    
     let activeBookingsCount = 0;
     const bookingsToCancel = [];
 
@@ -113,8 +116,6 @@ export async function PUT(
     const timeChanged = currentBooking.date !== isoDate || currentBooking.startTime !== hhmm;
 
     // Update Google Calendar event
-    const cal = calendarClient();
-    const { CALENDAR_ID, TZ } = getCalendarConfig();
 
     const summary = `${body.serviceType} — ${body.applianceType}`;
     const description =
