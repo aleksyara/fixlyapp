@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     console.log('Final calendar start time:', start);
     console.log('Final calendar end time:', end);
 
+    const cal = calendarClient();
     const { CALENDAR_ID, TZ } = getCalendarConfig();
 
     // Debug log (server terminal, not browser)
