@@ -78,7 +78,7 @@ export default function AppointmentForm() {
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState<FormState>({
-    serviceType: '',
+    serviceType: 'Repair',
     applianceType: '',
     brand: '',
     serialNumber: '',
@@ -301,7 +301,7 @@ export default function AppointmentForm() {
                 value={form.phone}
                 onChange={(e) => update('phone', e.target.value)}
                 maxLength={10}
-                placeholder="9494149956"
+                placeholder="Enter your phone number"
                 required
               />
             </div>
