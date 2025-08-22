@@ -58,24 +58,25 @@ function tzOffsetMs(utcInstant: Date, timeZone: string) {
 
 /** Convert a local wall time in Pacific TZ to a UTC ISO string */
 function toLocalISO(dateStr: string, timeStr: string): string {
-  // Use a much simpler approach: construct the date string with explicit timezone
-  const pacificDateTime = `${dateStr}T${timeStr}:00-08:00`; // Always use PST offset first
+  // Super simple approach: Just create the date and let the server handle timezone
+  // We'll send the raw local time and let the server convert it properly
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = timeStr.split(':').map(Number);
   
-  // Create date and check if we need DST adjustment
-  const tempDate = new Date(pacificDateTime);
-  const year = tempDate.getFullYear();
-  const month = tempDate.getMonth() + 1; // JavaScript months are 0-based
+  // Create a date object representing the local time
+  const localDate = new Date(y, m - 1, d, hh, mm, 0, 0);
   
-  // Rough DST check: March 2nd Sunday to November 1st Sunday
-  // For simplicity, use March-October as DST period
-  const isDST = month >= 3 && month <= 10;
+  // Since we're in Pacific timezone, we need to adjust for the offset
+  // Pacific is UTC-8 (PST) or UTC-7 (PDT)
+  // Let's check current date for DST
+  const now = new Date();
+  const isCurrentlyDST = now.getTimezoneOffset() === 420; // 420 minutes = 7 hours (PDT)
   
-  // If DST, use PDT offset (-07:00)
-  const finalDateTime = isDST ? 
-    `${dateStr}T${timeStr}:00-07:00` : 
-    `${dateStr}T${timeStr}:00-08:00`;
-    
-  return new Date(finalDateTime).toISOString();
+  // Add the Pacific offset to convert to UTC
+  const offsetMinutes = isCurrentlyDST ? 420 : 480; // 7 hours (PDT) or 8 hours (PST)
+  const utcTime = localDate.getTime() + (offsetMinutes * 60 * 1000);
+  
+  return new Date(utcTime).toISOString();
 }
 
 export default function AppointmentForm() {

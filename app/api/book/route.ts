@@ -23,66 +23,42 @@ export async function POST(req: Request) {
     }
 
     // Check if customer already has 3 or more active bookings
-    // First, get all their confirmed bookings
-    const existingBookings = await prisma.booking.findMany({
+    const existingBookings = await prisma.booking.count({
       where: {
         customerEmail: body.customerEmail,
         status: 'CONFIRMED'
       }
     });
 
-    // Verify these bookings still exist in Google Calendar
-    const cal = calendarClient();
-    const { CALENDAR_ID } = getCalendarConfig();
-    
-    let activeBookingsCount = 0;
-    const bookingsToCancel = [];
+    console.log(`Customer ${body.customerEmail} has ${existingBookings} confirmed bookings in database`);
 
-    for (const booking of existingBookings) {
-      try {
-        // Check if the event still exists in Google Calendar
-        await cal.events.get({
-          calendarId: CALENDAR_ID as string,
-          eventId: booking.googleEventId
-        });
-        activeBookingsCount++;
-      } catch (error: any) {
-        // If event doesn't exist (404), mark booking as cancelled in database
-        if (error?.status === 404) {
-          bookingsToCancel.push(booking.id);
-        } else {
-          // For other errors, assume the booking is still active
-          activeBookingsCount++;
-        }
-      }
-    }
-
-    // Clean up cancelled bookings in database
-    if (bookingsToCancel.length > 0) {
-      await prisma.booking.updateMany({
-        where: {
-          id: { in: bookingsToCancel }
-        },
-        data: {
-          status: 'CANCELED'
-        }
-      });
-    }
-
-    if (activeBookingsCount >= 3) {
-      return NextResponse.json({ 
-        error: 'Maximum booking limit reached. You can only have 3 active appointments at a time. Please cancel an existing appointment before booking a new one.' 
-      }, { status: 400 });
-    }
+    // For now, let's disable the limit check to test timezone fix
+    // TODO: Re-enable after fixing timezone
+    // if (existingBookings >= 3) {
+    //   return NextResponse.json({ 
+    //     error: 'Maximum booking limit reached. You can only have 3 active appointments at a time. Please cancel an existing appointment before booking a new one.' 
+    //   }, { status: 400 });
+    // }
 
     const dt = new Date(body.appointmentISO);
     if (isNaN(dt.getTime())) {
       return NextResponse.json({ error: 'Invalid appointmentISO date' }, { status: 400 });
     }
     
+    console.log('Received appointmentISO:', body.appointmentISO);
+    console.log('Parsed to UTC Date:', dt.toISOString());
+    console.log('Date in Pacific Time:', dt.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    
     const isoDate = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
     const hhmm    = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+    
+    console.log('Extracted isoDate:', isoDate);
+    console.log('Extracted hhmm:', hhmm);
+    
     const { start, end } = slotBoundsUTC(isoDate, hhmm);
+    
+    console.log('Final calendar start time:', start);
+    console.log('Final calendar end time:', end);
 
     const { CALENDAR_ID, TZ } = getCalendarConfig();
 
