@@ -84,7 +84,6 @@ export async function POST(req: Request) {
     const hhmm    = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
     const { start, end } = slotBoundsUTC(isoDate, hhmm);
 
-    const cal = calendarClient();
     const { CALENDAR_ID, TZ } = getCalendarConfig();
 
     // Debug log (server terminal, not browser)
