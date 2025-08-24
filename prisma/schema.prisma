@@ -7,6 +7,59 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  CLIENT
+  TECHNICIAN
+  ADMIN
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELED
+  COMPLETED
+}
+
+enum QuoteStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum NotificationType {
+  NEW_BOOKING
+  BOOKING_UPDATE
+  BOOKING_CANCELLED
+  NEW_QUOTE
+  QUOTE_APPROVED
+  QUOTE_REJECTED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  email     String?  @unique
+  name      String?
+  role      UserRole @default(CLIENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  clientBookings    Booking[]  @relation("ClientBookings")
+  technicianBookings Booking[] @relation("TechnicianBookings")
+  quotes           Quote[]
+  orders           Order[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
 model Client {
   id               String   @id @default(cuid())
   serviceType      String
@@ -24,19 +77,6 @@ model Client {
   updatedAt        DateTime @updatedAt
 
   @@map("clients")
-}
-
-model User {
-  id       String @id @default(cuid())
-  username String @unique
-  password String
-
-  @@map("users")
-}
-
-enum BookingStatus {
-  CONFIRMED
-  CANCELED
 }
 
 model Booking {
@@ -57,8 +97,72 @@ model Booking {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  // Relations
+  client      User?   @relation("ClientBookings", fields: [clientId], references: [id])
+  clientId    String?
+  technician  User?   @relation("TechnicianBookings", fields: [assignedTechnicianId], references: [id])
+  assignedTechnicianId String?
+  quotes      Quote[]
+  orders      Order[]
+
   @@index([date])     // handy for month views
   @@index([status])   // quick querying
   @@index([customerEmail, status]) // for booking limit validation
+  @@index([clientId, status]) // for client booking queries
+  @@index([assignedTechnicianId]) // for technician queries
   @@map("bookings")
+}
+
+model Quote {
+  id          String      @id @default(cuid())
+  bookingId   String
+  technicianId String
+  amount      Float
+  description String
+  status      QuoteStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  technician  User    @relation(fields: [technicianId], references: [id])
+  orders      Order[]
+
+  @@map("quotes")
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  bookingId String
+  quoteId   String?
+  userId    String
+  amount    Float
+  status    OrderStatus @default(PENDING)
+  receipt   String?     // URL to receipt file
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  quote     Quote?  @relation(fields: [quoteId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@map("orders")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  data      Json?            // Additional data for the notification
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
 }

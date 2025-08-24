@@ -1,7 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import SiteHeader from "../components/ui/header-site";
+import Providers from "@/components/Providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,8 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${inter.className} min-h-dvh bg-background text-foreground antialiased`}
         suppressHydrationWarning={true}
       >
-        <SiteHeader />  {/* ← header lives here */}
-        <main className="p-4">{children}</main>
+        <Providers>
+          <main className="p-4">{children}</main>
+        </Providers>
       </body>
     </html>
   );

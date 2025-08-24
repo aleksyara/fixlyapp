@@ -76,6 +76,7 @@ export async function POST(req: Request) {
       `Customer: ${body.customerName || ''}\nEmail: ${body.customerEmail}\nPhone: ${body.phone}\n` +
       `Address: ${body.serviceAddress}\nZIP: ${body.zipCode}\n` +
       `Brand: ${body.brand}${body.serialNumber ? `\nS/N: ${body.serialNumber}` : ''}\n` +
+      (body.problemDescription ? `Problem: ${body.problemDescription}\n` : '') +
       (body.isOrangeCounty != null ? `OC: ${body.isOrangeCounty}\n` : '') +
       (body.serviceFee != null ? `Service Fee: $${body.serviceFee}\n` : '');
 
@@ -123,6 +124,23 @@ export async function POST(req: Request) {
         status: 'CONFIRMED',
       },
     });
+
+    // Create notifications for admins about new booking
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+    });
+
+    for (const admin of admins) {
+      await prisma.notification.create({
+        data: {
+          userId: admin.id,
+          type: "NEW_BOOKING",
+          title: "New Booking Created",
+          message: `A new booking has been created for ${body.customerName || body.customerEmail} on ${isoDate} at ${hhmm}`,
+          data: { bookingId: booking.id, customerEmail: body.customerEmail },
+        },
+      });
+    }
 
     // Send confirmation email
     try {

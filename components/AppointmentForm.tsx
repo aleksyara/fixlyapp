@@ -25,6 +25,7 @@ type FormState = {
   serviceAddress: string;
   zipCode: string;       // 5-digit ZIP
   customerName?: string;
+  problemDescription?: string;
   date: string;          // yyyy-mm-dd
   time: string;          // HH:mm (24h)
   consent: boolean;
@@ -92,6 +93,7 @@ export default function AppointmentForm() {
     serviceAddress: '',
     zipCode: '',
     customerName: '',
+    problemDescription: '',
     date: '',
     time: '',
     consent: false,
@@ -306,7 +308,7 @@ export default function AppointmentForm() {
                 value={form.phone}
                 onChange={(e) => update('phone', e.target.value)}
                 maxLength={10}
-                placeholder="9494149956"
+                placeholder="Enter phone number"
                 required
               />
             </div>
@@ -338,6 +340,17 @@ export default function AppointmentForm() {
                 required
               />
             </div>
+          </div>
+
+          {/* Problem Description */}
+          <div>
+            <Label>Problem Description (optional)</Label>
+            <textarea
+              className="mt-1 w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={form.problemDescription}
+              onChange={(e) => update('problemDescription', e.target.value)}
+              placeholder="Describe the issue with your appliance..."
+            />
           </div>
 
           {/* Scheduling */}
