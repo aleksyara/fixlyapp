@@ -12,24 +12,6 @@ import { CalendarDays, MapPin, Phone, Wrench, Mail } from 'lucide-react';
 import AvailabilityCalendar from '@/components/AvailabilityCalendar';
 import AvailabilityPicker from '@/components/AvailabilityPicker';
 
-/** Convert a local wall time in Pacific TZ to a UTC ISO string */
-function toLocalISO(dateStr: string, timeStr: string): string {
-  // SIMPLE APPROACH: Don't do timezone conversion here!
-  // The server's slotBoundsUTC function already handles Pacific timezone conversion correctly.
-  // Just create a simple UTC date that represents the Pacific time values.
-  
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const [hh, mm] = timeStr.split(':').map(Number);
-  
-  // Create a UTC date with the Pacific time values
-  // The server will interpret this as Pacific time and convert it properly
-  const utcDate = new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0));
-  
-  console.log(`[EDIT] Sending ${dateStr} ${timeStr} Pacific as UTC: ${utcDate.toISOString()}`);
-  
-  return utcDate.toISOString();
-}
-
 interface Booking {
   id: string;
   customerName: string | null;
@@ -93,9 +75,9 @@ export default function EditAppointmentPage() {
 
     setSaving(true);
     try {
-      // Use the same timezone conversion as the booking form
-      const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD
-      const appointmentISO = toLocalISO(dateStr, selectedTime);
+      const appointmentISO = new Date(selectedDate);
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      appointmentISO.setHours(hours, minutes, 0, 0);
 
       const response = await fetch(`/api/appointment/${bookingId}`, {
         method: 'PUT',
@@ -103,7 +85,7 @@ export default function EditAppointmentPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          appointmentISO: appointmentISO,
+          appointmentISO: appointmentISO.toISOString(),
           customerName: booking.customerName,
           customerEmail: booking.customerEmail,
           phone: booking.phone,

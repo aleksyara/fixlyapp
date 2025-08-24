@@ -58,20 +58,25 @@ function tzOffsetMs(utcInstant: Date, timeZone: string) {
 
 /** Convert a local wall time in Pacific TZ to a UTC ISO string */
 function toLocalISO(dateStr: string, timeStr: string): string {
-  // SIMPLE APPROACH: Don't do timezone conversion here!
-  // The server's slotBoundsUTC function already handles Pacific timezone conversion correctly.
-  // Just create a simple UTC date that represents the Pacific time values.
-  
+  // Super simple approach: Just create the date and let the server handle timezone
+  // We'll send the raw local time and let the server convert it properly
   const [y, m, d] = dateStr.split('-').map(Number);
   const [hh, mm] = timeStr.split(':').map(Number);
   
-  // Create a UTC date with the Pacific time values
-  // The server will interpret this as Pacific time and convert it properly
-  const utcDate = new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0));
+  // Create a date object representing the local time
+  const localDate = new Date(y, m - 1, d, hh, mm, 0, 0);
   
-  console.log(`Sending ${dateStr} ${timeStr} Pacific as UTC: ${utcDate.toISOString()}`);
+  // Since we're in Pacific timezone, we need to adjust for the offset
+  // Pacific is UTC-8 (PST) or UTC-7 (PDT)
+  // Let's check current date for DST
+  const now = new Date();
+  const isCurrentlyDST = now.getTimezoneOffset() === 420; // 420 minutes = 7 hours (PDT)
   
-  return utcDate.toISOString();
+  // Add the Pacific offset to convert to UTC
+  const offsetMinutes = isCurrentlyDST ? 420 : 480; // 7 hours (PDT) or 8 hours (PST)
+  const utcTime = localDate.getTime() + (offsetMinutes * 60 * 1000);
+  
+  return new Date(utcTime).toISOString();
 }
 
 export default function AppointmentForm() {
@@ -171,14 +176,14 @@ export default function AppointmentForm() {
         }
       );
       const json = await res.json();
-             if (!res.ok) {
-         if (json.error && json.error.includes('Maximum booking limit reached')) {
-           toast.error('You have reached the maximum limit of 1 appointment. Please cancel your existing appointment before booking a new one.');
-         } else {
-           throw new Error(json.error || 'Booking failed');
-         }
-         return;
-       }
+      if (!res.ok) {
+        if (json.error && json.error.includes('Maximum booking limit reached')) {
+          toast.error('You have reached the maximum limit of 3 appointments. Please cancel an existing appointment before booking a new one.');
+        } else {
+          throw new Error(json.error || 'Booking failed');
+        }
+        return;
+      }
       window.location.href = `/appointment/success?bookingId=${json.bookingId}`;
     } catch (err: any) {
       toast.error(err.message || 'Booking failed');

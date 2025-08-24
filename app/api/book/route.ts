@@ -23,65 +23,22 @@ export async function POST(req: Request) {
     }
 
     // Check if customer already has 3 or more active bookings
-    // Get all confirmed bookings for this customer
-    const existingBookings = await prisma.booking.findMany({
+    const existingBookings = await prisma.booking.count({
       where: {
         customerEmail: body.customerEmail,
         status: 'CONFIRMED'
       }
     });
 
-    console.log(`Customer ${body.customerEmail} has ${existingBookings.length} confirmed bookings in database`);
+    console.log(`Customer ${body.customerEmail} has ${existingBookings} confirmed bookings in database`);
 
-    // Initialize calendar client
-    const cal = calendarClient();
-    const { CALENDAR_ID, TZ } = getCalendarConfig();
-
-    // SIMPLE APPROACH: Always cancel all existing bookings for this email when creating a new one
-    // This ensures only 1 booking per email at any time
-    const existingConfirmedBookings = await prisma.booking.findMany({
-      where: {
-        customerEmail: body.customerEmail,
-        status: 'CONFIRMED'
-      },
-      select: {
-        id: true,
-        date: true,
-        startTime: true,
-        googleEventId: true
-      }
-    });
-
-    if (existingConfirmedBookings.length > 0) {
-      console.log(`Found ${existingConfirmedBookings.length} existing bookings for ${body.customerEmail}. Cancelling them...`);
-      
-      // Cancel all existing confirmed bookings for this email
-      const cancelResult = await prisma.booking.updateMany({
-        where: {
-          customerEmail: body.customerEmail,
-          status: 'CONFIRMED'
-        },
-        data: {
-          status: 'CANCELED'
-        }
-      });
-
-      console.log(`✓ Cancelled ${cancelResult.count} existing bookings for ${body.customerEmail}`);
-
-      // Also try to delete the events from Google Calendar (best effort)
-      for (const booking of existingConfirmedBookings) {
-        try {
-          await cal.events.delete({
-            calendarId: CALENDAR_ID as string,
-            eventId: booking.googleEventId
-          });
-          console.log(`✓ Deleted event ${booking.googleEventId} from Google Calendar`);
-        } catch (error: any) {
-          console.log(`⚠ Could not delete event ${booking.googleEventId} from calendar (${error?.status}): ${error?.message}`);
-          // Continue anyway - the database record is already cancelled
-        }
-      }
-    }
+    // For now, let's disable the limit check to test timezone fix
+    // TODO: Re-enable after fixing timezone
+    // if (existingBookings >= 3) {
+    //   return NextResponse.json({ 
+    //     error: 'Maximum booking limit reached. You can only have 3 active appointments at a time. Please cancel an existing appointment before booking a new one.' 
+    //   }, { status: 400 });
+    // }
 
     const dt = new Date(body.appointmentISO);
     if (isNaN(dt.getTime())) {
@@ -103,20 +60,8 @@ export async function POST(req: Request) {
     console.log('Final calendar start time:', start);
     console.log('Final calendar end time:', end);
 
-    // Check for duplicate bookings at the same time
-    const duplicateBooking = await prisma.booking.findFirst({
-      where: {
-        date: isoDate,
-        startTime: hhmm,
-        status: 'CONFIRMED'
-      }
-    });
-
-    if (duplicateBooking) {
-      return NextResponse.json({ 
-        error: 'This time slot is already booked. Please choose a different time.' 
-      }, { status: 400 });
-    }
+    const cal = calendarClient();
+    const { CALENDAR_ID, TZ } = getCalendarConfig();
 
     // Debug log (server terminal, not browser)
     // console.log('DEBUG booking env', {
