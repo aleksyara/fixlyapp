@@ -4,12 +4,20 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, role = 'CLIENT' } = await req.json();
+    const { name, email, password, phone, address, role = 'CLIENT' } = await req.json();
 
     // Validate required fields
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: 'Name, email, and password are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate phone for clients
+    if (role === 'CLIENT' && !phone) {
+      return NextResponse.json(
+        { error: 'Phone number is required for client accounts' },
         { status: 400 }
       );
     }
@@ -53,6 +61,8 @@ export async function POST(req: Request) {
         email,
         username: email, // Use email as username
         password: hashedPassword,
+        phone: phone || null,
+        address: address || null,
         role: role as any, // Cast to UserRole
       },
     });

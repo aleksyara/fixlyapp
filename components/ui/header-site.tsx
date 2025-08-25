@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Phone, User, LogOut, Settings, Bell } from 'lucide-react';
+import { Phone, User, LogOut, Settings, Bell, Calendar, Briefcase, Coffee } from 'lucide-react';
 import Logo from '@/components/ui/logo';
 import BrandName from '@/components/ui/brand-name';
 import { Button } from '@/components/ui/button';
@@ -17,18 +17,90 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from 'react';
 
 export default function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, signOut, hasRole } = useAuth();
   const onBookFlow = pathname?.startsWith('/book'); // covers /book and subroutes
+  const [technicianStatus, setTechnicianStatus] = useState<string>('READY_TO_WORK');
 
-  const getRoleBadge = () => {
-    if (hasRole(UserRole.ADMIN)) return <Badge className="bg-red-100 text-red-800">Admin</Badge>;
-    if (hasRole(UserRole.TECHNICIAN)) return <Badge className="bg-blue-100 text-blue-800">Technician</Badge>;
-    if (hasRole(UserRole.CLIENT)) return <Badge className="bg-green-100 text-green-800">Client</Badge>;
-    return null;
+  useEffect(() => {
+    if (user?.technicianStatus) {
+      setTechnicianStatus(user.technicianStatus);
+    }
+  }, [user]);
+
+  const toggleTechnicianStatus = async () => {
+    try {
+      const response = await fetch('/api/technician/status', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: technicianStatus === 'READY_TO_WORK' ? 'DAY_OFF' : 'READY_TO_WORK'
+        }),
+      });
+
+      if (response.ok) {
+        const newStatus = technicianStatus === 'READY_TO_WORK' ? 'DAY_OFF' : 'READY_TO_WORK';
+        setTechnicianStatus(newStatus);
+      }
+    } catch (error) {
+      console.error('Error updating technician status:', error);
+    }
+  };
+
+  const getDisplayName = () => {
+    if (hasRole(UserRole.ADMIN)) return 'Admin';
+    return user?.name || user?.email?.split('@')[0] || 'User';
+  };
+
+  const getActionButton = () => {
+    if (hasRole(UserRole.ADMIN)) {
+      return (
+        <Button 
+          onClick={() => window.open('/admin/calendar', '_blank')} 
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <Calendar className="h-4 w-4 mr-2" />
+          Calendar
+        </Button>
+      );
+    } else if (hasRole(UserRole.TECHNICIAN)) {
+      return (
+        <Button 
+          onClick={toggleTechnicianStatus}
+          className={technicianStatus === 'READY_TO_WORK' 
+            ? 'bg-green-600 hover:bg-green-700 text-white' 
+            : 'bg-orange-600 hover:bg-orange-700 text-white'
+          }
+        >
+          {technicianStatus === 'READY_TO_WORK' ? (
+            <>
+              <Briefcase className="h-4 w-4 mr-2" />
+              Ready To Work
+            </>
+          ) : (
+            <>
+              <Coffee className="h-4 w-4 mr-2" />
+              Day Off
+            </>
+          )}
+        </Button>
+      );
+    } else {
+      // CLIENT
+      return (
+        <Link href="/book">
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+            Book Appointment
+          </Button>
+        </Link>
+      );
+    }
   };
 
   return (
@@ -61,14 +133,9 @@ export default function SiteHeader() {
               <div className="flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex items-center gap-2 relative">
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
                       <User className="h-4 w-4" />
-                      {user?.name || user?.email?.split('@')[0]}
-                      {getRoleBadge() && (
-                        <div className="absolute -top-2 -right-2">
-                          {getRoleBadge()}
-                        </div>
-                      )}
+                      {getDisplayName()}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -80,14 +147,6 @@ export default function SiteHeader() {
                         Dashboard
                       </Link>
                     </DropdownMenuItem>
-                    {hasRole(UserRole.ADMIN) && (
-                      <DropdownMenuItem asChild>
-                        <Link href="/admin" className="flex items-center gap-2">
-                          <Settings className="h-4 w-4" />
-                          Admin Panel
-                        </Link>
-                      </DropdownMenuItem>
-                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut} className="flex items-center gap-2">
                       <LogOut className="h-4 w-4" />
@@ -95,22 +154,13 @@ export default function SiteHeader() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                
+                {getActionButton()}
               </div>
             ) : (
               <Button onClick={() => router.push("/auth/signin")} variant="outline" size="sm">
                 Sign In
               </Button>
-            )}
-
-            {pathname !== '/book' && (
-             <>
-              <span className="text-gray-400">/</span>
-                <Link href="/book">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    Book Appointment
-                  </Button>
-                </Link>
-              </>
             )}            
           </div>
         </div>

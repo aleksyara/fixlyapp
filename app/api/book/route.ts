@@ -22,7 +22,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required service information' }, { status: 400 });
     }
 
-    // Check if customer already has 3 or more active bookings
+    // Check if customer has pending quotes that allow new bookings
+    const pendingQuotes = await prisma.quote.count({
+      where: {
+        booking: {
+          customerEmail: body.customerEmail
+        },
+        status: {
+          in: ['PENDING', 'APPROVED']
+        }
+      }
+    });
+
+    // Check if customer already has 3 or more active bookings (only if no pending quotes)
     const existingBookings = await prisma.booking.count({
       where: {
         customerEmail: body.customerEmail,
@@ -30,15 +42,14 @@ export async function POST(req: Request) {
       }
     });
 
-    console.log(`Customer ${body.customerEmail} has ${existingBookings} confirmed bookings in database`);
+    console.log(`Customer ${body.customerEmail} has ${existingBookings} confirmed bookings and ${pendingQuotes} pending quotes`);
 
-    // For now, let's disable the limit check to test timezone fix
-    // TODO: Re-enable after fixing timezone
-    // if (existingBookings >= 3) {
-    //   return NextResponse.json({ 
-    //     error: 'Maximum booking limit reached. You can only have 3 active appointments at a time. Please cancel an existing appointment before booking a new one.' 
-    //   }, { status: 400 });
-    // }
+    // Allow new bookings if customer has pending quotes, otherwise check the 3-booking limit
+    if (pendingQuotes === 0 && existingBookings >= 3) {
+      return NextResponse.json({ 
+        error: 'Maximum booking limit reached. You can only have 3 active appointments at a time. Please cancel an existing appointment before booking a new one.' 
+      }, { status: 400 });
+    }
 
     const dt = new Date(body.appointmentISO);
     if (isNaN(dt.getTime())) {
@@ -115,13 +126,13 @@ export async function POST(req: Request) {
         brand: body.brand,
         serviceAddress: body.serviceAddress,
         zipCode: body.zipCode,
-        status: 'CONFIRMED',
+        status: 'PENDING',
       },
       update: {
         date: isoDate,
         startTime: hhmm,
         durationMinutes: body.durationMinutes || 60,
-        status: 'CONFIRMED',
+        status: 'PENDING',
       },
     });
 

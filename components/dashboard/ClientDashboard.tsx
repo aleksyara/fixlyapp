@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, FileText, Receipt, Clock } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface Booking {
   id: string
@@ -20,13 +21,7 @@ interface Booking {
   serviceAddress: string
 }
 
-interface Order {
-  id: string
-  amount: number
-  status: string
-  createdAt: string
-  receipt?: string
-}
+
 
 interface Quote {
   id: string
@@ -40,7 +35,6 @@ export default function ClientDashboard() {
   const { user } = useAuth()
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -52,20 +46,14 @@ export default function ClientDashboard() {
 
   const fetchClientData = async () => {
     try {
-      const [bookingsRes, ordersRes, quotesRes] = await Promise.all([
+      const [bookingsRes, quotesRes] = await Promise.all([
         fetch(`/api/client/bookings?email=${user.email}`),
-        fetch(`/api/client/orders?email=${user.email}`),
         fetch(`/api/client/quotes?email=${user.email}`)
       ])
 
       if (bookingsRes.ok) {
         const bookingsData = await bookingsRes.json()
         setBookings(bookingsData)
-      }
-
-      if (ordersRes.ok) {
-        const ordersData = await ordersRes.json()
-        setOrders(ordersData)
       }
 
       if (quotesRes.ok) {
@@ -79,6 +67,8 @@ export default function ClientDashboard() {
     }
   }
 
+
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "CONFIRMED":
@@ -89,8 +79,12 @@ export default function ClientDashboard() {
         return "bg-blue-100 text-blue-800"
       case "PENDING":
         return "bg-yellow-100 text-yellow-800"
+      case "APPROVED":
+        return "bg-blue-100 text-blue-800"
       case "PAID":
         return "bg-green-100 text-green-800"
+      case "REJECTED":
+        return "bg-red-100 text-red-800"
       case "CANCELLED":
         return "bg-red-100 text-red-800"
       default:
@@ -108,7 +102,7 @@ export default function ClientDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
@@ -119,19 +113,11 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{orders.filter(o => o.status === "PENDING").length}</div>
-          </CardContent>
-        </Card>
+
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Quotes</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -143,8 +129,7 @@ export default function ClientDashboard() {
       <Tabs defaultValue="bookings" className="space-y-4">
         <TabsList>
           <TabsTrigger value="bookings">My Bookings</TabsTrigger>
-          <TabsTrigger value="orders">My Orders</TabsTrigger>
-          <TabsTrigger value="quotes">My Quotes</TabsTrigger>
+          <TabsTrigger value="quotes">My Orders</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bookings" className="space-y-4">
@@ -187,48 +172,12 @@ export default function ClientDashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="orders" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>My Orders</CardTitle>
-              <CardDescription>Track your payments and receipts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {orders.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No orders found</p>
-              ) : (
-                <div className="space-y-4">
-                  {orders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <p className="font-medium">Order #{order.id.slice(-8)}</p>
-                        <p className="text-sm text-gray-600">
-                          ${order.amount.toFixed(2)} - {new Date(order.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge className={getStatusColor(order.status)}>
-                          {order.status}
-                        </Badge>
-                        {order.receipt && (
-                          <Button variant="outline" size="sm">
-                            <Receipt className="h-4 w-4 mr-2" />
-                            Download Receipt
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+
 
         <TabsContent value="quotes" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>My Quotes</CardTitle>
+              <CardTitle>My Orders</CardTitle>
               <CardDescription>Review and approve service quotes</CardDescription>
             </CardHeader>
             <CardContent>
@@ -252,12 +201,23 @@ export default function ClientDashboard() {
                         </Badge>
                         {quote.status === "PENDING" && (
                           <div className="flex space-x-2">
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                              Approve
+                            <Button 
+                              size="sm" 
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => router.push(`/payment/${quote.id}`)}
+                            >
+                              Pay Quote
                             </Button>
-                            <Button size="sm" variant="outline">
-                              Reject
-                            </Button>
+                          </div>
+                        )}
+                        {quote.status === "APPROVED" && (
+                          <div className="text-sm text-green-600 font-medium">
+                            Quote Confirmed
+                          </div>
+                        )}
+                        {quote.status === "PAID" && (
+                          <div className="text-sm text-blue-600 font-medium">
+                            Paid
                           </div>
                         )}
                       </div>

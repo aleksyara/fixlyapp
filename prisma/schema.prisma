@@ -13,7 +13,13 @@ enum UserRole {
   ADMIN
 }
 
+enum TechnicianStatus {
+  READY_TO_WORK
+  DAY_OFF
+}
+
 enum BookingStatus {
+  PENDING
   CONFIRMED
   CANCELED
   COMPLETED
@@ -23,6 +29,7 @@ enum QuoteStatus {
   PENDING
   APPROVED
   REJECTED
+  PAID
 }
 
 enum OrderStatus {
@@ -46,7 +53,10 @@ model User {
   password  String
   email     String?  @unique
   name      String?
+  phone     String?
+  address   String?
   role      UserRole @default(CLIENT)
+  technicianStatus TechnicianStatus? @default(READY_TO_WORK)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

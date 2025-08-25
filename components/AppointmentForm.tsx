@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/lib/auth-context';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -81,6 +82,7 @@ function toLocalISO(dateStr: string, timeStr: string): string {
 }
 
 export default function AppointmentForm() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState<FormState>({
@@ -186,7 +188,14 @@ export default function AppointmentForm() {
         }
         return;
       }
-      window.location.href = `/appointment/success?bookingId=${json.bookingId}`;
+      // Check if user is logged in and redirect accordingly
+      if (user?.email) {
+        // User is logged in, redirect to dashboard
+        window.location.href = '/dashboard';
+      } else {
+        // User is not logged in, redirect to main page
+        window.location.href = '/';
+      }
     } catch (err: any) {
       toast.error(err.message || 'Booking failed');
     } finally {

@@ -28,6 +28,20 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         email: true,
+        phone: true,
+        address: true,
+        technicianStatus: true,
+        technicianBookings: {
+          select: {
+            id: true,
+          }
+        },
+        quotes: {
+          select: {
+            id: true,
+            status: true,
+          }
+        },
       },
       orderBy: {
         name: "asc",

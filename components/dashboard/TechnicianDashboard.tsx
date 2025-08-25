@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import TechnicianCalendar from "@/components/TechnicianCalendar"
 
 interface Booking {
   id: string
@@ -131,43 +132,27 @@ export default function TechnicianDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assigned Bookings</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{bookings.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Quotes</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{quotes.filter(q => q.status === "PENDING").length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed Today</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {bookings.filter(b => b.status === "COMPLETED" && new Date(b.date).toDateString() === new Date().toDateString()).length}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-lg border">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-gray-500" />
+          <span className="text-sm font-medium">Assigned: <span className="font-bold text-lg">{bookings.length}</span></span>
+        </div>
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-gray-500" />
+          <span className="text-sm font-medium">Pending: <span className="font-bold text-lg">{quotes.filter(q => q.status === "PENDING").length}</span></span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-gray-500" />
+          <span className="text-sm font-medium">Completed: <span className="font-bold text-lg">
+            {bookings.filter(b => b.status === "COMPLETED" && new Date(b.date).toDateString() === new Date().toDateString()).length}
+          </span></span>
+        </div>
       </div>
 
       <Tabs defaultValue="bookings" className="space-y-4">
         <TabsList>
           <TabsTrigger value="bookings">Assigned Bookings</TabsTrigger>
+          <TabsTrigger value="calendar">My Schedule</TabsTrigger>
           <TabsTrigger value="quotes">My Quotes</TabsTrigger>
         </TabsList>
 
@@ -193,11 +178,11 @@ export default function TechnicianDashboard() {
                         <p className="text-sm text-gray-600">Customer: {booking.customerName} ({booking.customerEmail})</p>
                         <p className="text-sm text-gray-600">Phone: {booking.phone}</p>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                         <Badge className={getStatusColor(booking.status)}>
                           {booking.status}
                         </Badge>
-                        <Dialog>
+                        <Dialog open={selectedBooking?.id === booking.id} onOpenChange={(open) => !open && setSelectedBooking(null)}>
                           <DialogTrigger asChild>
                             <Button
                               variant="outline"
@@ -253,6 +238,13 @@ export default function TechnicianDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="calendar" className="space-y-4">
+          <TechnicianCalendar 
+            bookings={bookings} 
+            onBookingClick={(booking) => router.push(`/appointment/view/${booking.id}`)}
+          />
         </TabsContent>
 
         <TabsContent value="quotes" className="space-y-4">
