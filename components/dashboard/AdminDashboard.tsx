@@ -72,6 +72,12 @@ interface Notification {
   message: string
   read: boolean
   createdAt: string
+  data?: {
+    bookingId?: string
+    quoteId?: string
+    customerEmail?: string
+    amount?: number
+  }
 }
 
 export default function AdminDashboard() {
@@ -921,34 +927,102 @@ export default function AdminDashboard() {
                 <p className="text-center text-gray-500 py-8">No notifications found</p>
               ) : (
                 <div className="space-y-4">
-                  {notifications.map((notification) => (
-                    <div 
-                      key={notification.id} 
-                      className={`flex items-center justify-between p-4 border rounded-lg ${!notification.read ? 'bg-blue-50' : ''}`}
-                    >
-                      <div className="space-y-1">
-                        <p className="font-medium">{notification.title}</p>
-                        <p className="text-sm text-gray-600">{notification.message}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(notification.createdAt).toLocaleDateString()}
-                        </p>
+                  {notifications.map((notification) => {
+                    const booking = notification.type === "NEW_BOOKING" && notification.data?.bookingId 
+                      ? bookings.find(b => b.id === notification.data?.bookingId)
+                      : null
+                    const isBookingNotification = notification.type === "NEW_BOOKING" && booking && booking.status !== "SUBMITTED_TO_CLIENT"
+                    
+                    return (
+                      <div 
+                        key={notification.id} 
+                        className={`flex items-center justify-between p-4 border rounded-lg ${!notification.read ? 'bg-blue-50' : ''}`}
+                      >
+                        <div className="space-y-1 flex-1">
+                          <p className="font-medium">{notification.title}</p>
+                          <p className="text-sm text-gray-600">{notification.message}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(notification.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {!notification.read && (
+                            <Badge className="bg-blue-100 text-blue-800">New</Badge>
+                          )}
+                          {isBookingNotification && (
+                            <Dialog 
+                              open={selectedBooking?.id === booking.id && selectedBooking?.id === notification.data?.bookingId} 
+                              onOpenChange={(open) => {
+                                if (!open) {
+                                  setSelectedBooking(null)
+                                  setSelectedTechnicianId("")
+                                }
+                              }}
+                            >
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedBooking(booking)
+                                    setSelectedTechnicianId(booking.assignedTechnicianId || "")
+                                  }}
+                                >
+                                  Assign Technician
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>{booking.assignedTechnicianId ? "Reassign" : "Assign"} Technician to Booking</DialogTitle>
+                                  <DialogDescription>
+                                    Select a technician to {booking.assignedTechnicianId ? "reassign" : "assign"} to this booking.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="technician">Technician</Label>
+                                    <Select value={selectedTechnicianId} onValueChange={setSelectedTechnicianId}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a technician" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {technicians.map((technician) => (
+                                          <SelectItem key={technician.id} value={technician.id}>
+                                            {technician.name} ({technician.email})
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <Button
+                                    onClick={async () => {
+                                      if (selectedTechnicianId) {
+                                        await assignTechnician(booking.id, selectedTechnicianId)
+                                        markNotificationAsRead(notification.id)
+                                      }
+                                    }}
+                                    disabled={!selectedTechnicianId || assigningTechnician}
+                                    className="w-full"
+                                  >
+                                    {assigningTechnician ? "Assigning..." : booking.assignedTechnicianId ? "Reassign Technician" : "Assign Technician"}
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                          {!notification.read && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => markNotificationAsRead(notification.id)}
+                            >
+                              Mark as Read
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        {!notification.read && (
-                          <Badge className="bg-blue-100 text-blue-800">New</Badge>
-                        )}
-                        {!notification.read && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => markNotificationAsRead(notification.id)}
-                          >
-                            Mark as Read
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
