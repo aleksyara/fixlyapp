@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, FileText, Users, Clock, Mail } from "lucide-react"
+import { Calendar, FileText, Users, Clock, Mail, CalendarClock } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import TechnicianCalendar from "@/components/TechnicianCalendar"
 import { useToast } from "@/hooks/use-toast"
+import AvailabilityCalendar from "@/components/AvailabilityCalendar"
+import AvailabilityPicker from "@/components/AvailabilityPicker"
+import { fromISODateLocal } from "@/lib/dateUtils"
 
 interface Booking {
   id: string
@@ -47,6 +50,9 @@ export default function TechnicianDashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [sendingFollowUp, setSendingFollowUp] = useState<string | null>(null)
+  const [reschedulingQuote, setReschedulingQuote] = useState<string | null>(null)
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined)
+  const [rescheduleTime, setRescheduleTime] = useState<string>("")
   const [quoteForm, setQuoteForm] = useState({
     amount: "",
     description: ""
@@ -375,7 +381,7 @@ export default function TechnicianDashboard() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
                         <Button
                           onClick={() => sendFollowUp(quote.id)}
                           disabled={sendingFollowUp === quote.id}
@@ -386,6 +392,72 @@ export default function TechnicianDashboard() {
                           <Mail className="h-4 w-4" />
                           {sendingFollowUp === quote.id ? "Sending..." : "Follow Up"}
                         </Button>
+                        <Dialog 
+                          open={reschedulingQuote === quote.id}
+                          onOpenChange={(open) => {
+                            if (!open) {
+                              setReschedulingQuote(null)
+                              setRescheduleDate(undefined)
+                              setRescheduleTime("")
+                            } else {
+                              setReschedulingQuote(quote.id)
+                              setRescheduleDate(fromISODateLocal(quote.booking.date))
+                            }
+                          }}
+                        >
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center gap-2"
+                            >
+                              <CalendarClock className="h-4 w-4" />
+                              Reschedule
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>Reschedule Booking</DialogTitle>
+                              <DialogDescription>
+                                Select a new date and time for this appointment.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <AvailabilityCalendar
+                                value={rescheduleDate}
+                                onChange={(date) => {
+                                  setRescheduleDate(date)
+                                  setRescheduleTime("")
+                                }}
+                              />
+                              {rescheduleDate && (
+                                <AvailabilityPicker
+                                  date={rescheduleDate.toISOString().split('T')[0]}
+                                  value={rescheduleTime}
+                                  onSelect={setRescheduleTime}
+                                />
+                              )}
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setReschedulingQuote(null)
+                                    setRescheduleDate(undefined)
+                                    setRescheduleTime("")
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  onClick={() => rescheduleBooking(quote.id, quote.bookingId)}
+                                  disabled={!rescheduleDate || !rescheduleTime || reschedulingQuote === quote.id}
+                                >
+                                  {reschedulingQuote === quote.id ? "Rescheduling..." : "Reschedule"}
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </div>
                   ))}

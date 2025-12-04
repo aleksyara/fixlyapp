@@ -23,13 +23,29 @@ export async function GET(request: NextRequest) {
     const bookings = await prisma.booking.findMany({
       include: {
         technician: true,
+        quotes: {
+          select: {
+            id: true,
+          },
+        },
       },
       orderBy: {
         date: "desc",
       },
     })
 
-    return NextResponse.json(bookings)
+    // Update status to SUBMITTED_TO_CLIENT if booking has quotes but status is not set correctly
+    const bookingsWithCorrectStatus = bookings.map((booking) => {
+      if (booking.quotes.length > 0 && booking.status !== "SUBMITTED_TO_CLIENT") {
+        return {
+          ...booking,
+          status: "SUBMITTED_TO_CLIENT" as const,
+        }
+      }
+      return booking
+    })
+
+    return NextResponse.json(bookingsWithCorrectStatus)
   } catch (error) {
     console.error("Error fetching admin bookings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

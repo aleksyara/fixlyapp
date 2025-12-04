@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { Mail } from "lucide-react"
 
 interface Booking {
   id: string
@@ -203,6 +204,39 @@ export default function AdminDashboard() {
       fetchAdminData() // Refresh data
     } catch (error) {
       console.error("Error marking notification as read:", error)
+    }
+  }
+
+  const sendFollowUp = async (quoteId: string) => {
+    setSendingFollowUp(quoteId)
+    try {
+      const response = await fetch(`/api/quotes/${quoteId}/follow-up`, {
+        method: "POST",
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Follow-up email sent successfully",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to send follow-up email",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error sending follow-up:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingFollowUp(null)
     }
   }
 
@@ -532,6 +566,18 @@ export default function AdminDashboard() {
                             </p>
                           </div>
                         </div>
+                      </div>
+                      <div className="flex justify-end mt-3">
+                        <Button
+                          onClick={() => sendFollowUp(quote.id)}
+                          disabled={sendingFollowUp === quote.id}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Mail className="h-4 w-4" />
+                          {sendingFollowUp === quote.id ? "Sending..." : "Follow Up"}
+                        </Button>
                       </div>
                     </div>
                   ))}
