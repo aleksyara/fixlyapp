@@ -49,8 +49,7 @@ export async function PUT(
       where: { id: id },
       data: { 
         assignedTechnicianId: technicianId,
-        // Update status to CONFIRMED when technician is assigned (if it was PENDING)
-        status: "CONFIRMED",
+        // Keep the existing status - don't change to CONFIRMED
       },
       include: { technician: true },
     })
