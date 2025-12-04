@@ -31,11 +31,21 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    console.log(`Found ${bookings.length} bookings for technician ${technicianId}`, bookings.map(b => ({ id: b.id, status: b.status, assignedTechnicianId: b.assignedTechnicianId })))
+    console.log(`Found ${bookings.length} bookings for technician ${technicianId}`)
 
-    return NextResponse.json(bookings)
+    // Serialize dates to strings to avoid serialization issues
+    const serializedBookings = bookings.map(booking => ({
+      ...booking,
+      createdAt: booking.createdAt.toISOString(),
+      updatedAt: booking.updatedAt.toISOString(),
+    }))
+
+    return NextResponse.json(serializedBookings)
   } catch (error) {
     console.error("Error fetching technician bookings:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    const errorStack = error instanceof Error ? error.stack : undefined
+    console.error("Error stack:", errorStack)
+    return NextResponse.json({ error: "Internal server error", details: errorMessage }, { status: 500 })
   }
 }
