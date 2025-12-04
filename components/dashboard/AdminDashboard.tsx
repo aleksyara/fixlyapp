@@ -931,7 +931,7 @@ export default function AdminDashboard() {
                     const booking = notification.type === "NEW_BOOKING" && notification.data?.bookingId 
                       ? bookings.find(b => b.id === notification.data?.bookingId)
                       : null
-                    const isBookingNotification = notification.type === "NEW_BOOKING" && booking && booking.status !== "SUBMITTED_TO_CLIENT"
+                    const isBookingNotification = notification.type === "NEW_BOOKING" && booking && booking.status !== "SUBMITTED_TO_CLIENT" && !booking.assignedTechnicianId
                     
                     return (
                       <div 
