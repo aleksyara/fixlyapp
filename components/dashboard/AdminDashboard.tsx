@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/hooks/use-toast"
 
 interface Booking {
   id: string
@@ -71,6 +72,7 @@ interface Notification {
 export default function AdminDashboard() {
   const { user } = useAuth()
   const router = useRouter()
+  const { toast } = useToast()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [technicians, setTechnicians] = useState<Technician[]>([])
@@ -78,6 +80,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [selectedTechnicianId, setSelectedTechnicianId] = useState("")
+  const [assigningTechnician, setAssigningTechnician] = useState(false)
   const [showCreateUserDialog, setShowCreateUserDialog] = useState(false)
   const [newUser, setNewUser] = useState({
     firstName: '',
@@ -140,6 +143,16 @@ export default function AdminDashboard() {
   }
 
   const assignTechnician = async (bookingId: string, technicianId: string) => {
+    if (!technicianId) {
+      toast({
+        title: "Error",
+        description: "Please select a technician",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setAssigningTechnician(true)
     try {
       const response = await fetch(`/api/admin/bookings/${bookingId}/assign`, {
         method: "PUT",
@@ -149,13 +162,32 @@ export default function AdminDashboard() {
         body: JSON.stringify({ technicianId }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Technician assigned successfully",
+        })
         setSelectedBooking(null)
         setSelectedTechnicianId("")
-        fetchAdminData() // Refresh data
+        await fetchAdminData() // Refresh data
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to assign technician",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error("Error assigning technician:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setAssigningTechnician(false)
     }
   }
 
@@ -339,21 +371,33 @@ export default function AdminDashboard() {
                         <Badge className={getStatusColor(booking.status)}>
                           {booking.status}
                         </Badge>
-                        <Dialog open={selectedBooking?.id === booking.id} onOpenChange={(open) => !open && setSelectedBooking(null)}>
+                        <Dialog 
+                          open={selectedBooking?.id === booking.id} 
+                          onOpenChange={(open) => {
+                            if (!open) {
+                              setSelectedBooking(null)
+                              setSelectedTechnicianId("")
+                            }
+                          }}
+                        >
                           <DialogTrigger asChild>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setSelectedBooking(booking)}
+                              onClick={() => {
+                                setSelectedBooking(booking)
+                                // Pre-populate with current technician if reassigning
+                                setSelectedTechnicianId(booking.assignedTechnicianId || "")
+                              }}
                             >
                               {booking.assignedTechnicianId ? "Reassign" : "Assign"} Technician
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Assign Technician to Booking</DialogTitle>
+                              <DialogTitle>{booking.assignedTechnicianId ? "Reassign" : "Assign"} Technician to Booking</DialogTitle>
                               <DialogDescription>
-                                Select a technician to assign to this booking.
+                                Select a technician to {booking.assignedTechnicianId ? "reassign" : "assign"} to this booking.
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4">
@@ -374,10 +418,10 @@ export default function AdminDashboard() {
                               </div>
                               <Button
                                 onClick={() => assignTechnician(booking.id, selectedTechnicianId)}
-                                disabled={!selectedTechnicianId}
+                                disabled={!selectedTechnicianId || assigningTechnician}
                                 className="w-full"
                               >
-                                Assign Technician
+                                {assigningTechnician ? "Assigning..." : booking.assignedTechnicianId ? "Reassign Technician" : "Assign Technician"}
                               </Button>
                             </div>
                           </DialogContent>
