@@ -441,8 +441,10 @@ export default function AdminDashboard() {
                         <p className="text-sm text-gray-600">{booking.serviceAddress}</p>
                         <p className="text-sm text-gray-600">Customer: {booking.customerName} ({booking.customerEmail})</p>
                         <p className="text-sm text-gray-600">Phone: {booking.phone}</p>
-                        {booking.technician && (
+                        {booking.technician ? (
                           <p className="text-sm text-green-600">Assigned to: {booking.technician.name}</p>
+                        ) : (
+                          <p className="text-sm text-orange-600">No technician assigned</p>
                         )}
                       </div>
                       <div className="flex items-center space-x-2">
@@ -642,33 +644,51 @@ export default function AdminDashboard() {
                   
                   <div>
                     <Label className="text-sm font-medium">Bookings & Quotes</Label>
-                    <div className="mt-2 space-y-2">
-                      {selectedClient.clientBookings?.length === 0 ? (
+                    <div className="mt-2 space-y-2 max-h-96 overflow-y-auto">
+                      {!selectedClient.clientBookings || selectedClient.clientBookings.length === 0 ? (
                         <p className="text-sm text-gray-500">No bookings found</p>
                       ) : (
-                        selectedClient.clientBookings?.map((booking: any) => (
+                        selectedClient.clientBookings.map((booking: any) => (
                           <div key={booking.id} className="p-3 border rounded-lg">
-                            <div className="flex items-center justify-between">
-                              <div>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
                                 <p className="font-medium text-sm">{booking.serviceType} - {booking.applianceType}</p>
                                 <p className="text-xs text-gray-600">
                                   {new Date(booking.date).toLocaleDateString()} at {booking.startTime}
                                 </p>
                                 <p className="text-xs text-gray-600">{booking.serviceAddress}</p>
+                                {booking.technician && (
+                                  <p className="text-xs text-green-600 mt-1">
+                                    Assigned to: {booking.technician.name || booking.technician.email}
+                                  </p>
+                                )}
+                                {!booking.assignedTechnicianId && (
+                                  <p className="text-xs text-orange-600 mt-1">
+                                    No technician assigned
+                                  </p>
+                                )}
                               </div>
                               <Badge className={getStatusColor(booking.status)}>
-                                {booking.status}
+                                {formatStatus(booking.status)}
                               </Badge>
                             </div>
-                            {booking.quotes?.length > 0 && (
-                              <div className="mt-2 space-y-1">
-                                <p className="text-xs font-medium text-gray-700">Quotes:</p>
+                            {booking.quotes && booking.quotes.length > 0 && (
+                              <div className="mt-2 pt-2 border-t space-y-2">
+                                <p className="text-xs font-medium text-gray-700">Quotes ({booking.quotes.length}):</p>
                                 {booking.quotes.map((quote: any) => (
-                                  <div key={quote.id} className="flex items-center justify-between text-xs">
-                                    <span>${quote.amount.toFixed(2)} - {quote.description}</span>
-                                    <Badge className={`text-xs ${getStatusColor(quote.status)}`}>
-                                      {quote.status}
-                                    </Badge>
+                                  <div key={quote.id} className="p-2 bg-gray-50 rounded text-xs">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-medium">${quote.amount.toFixed(2)}</span>
+                                      <Badge className={`text-xs ${getStatusColor(quote.status)}`}>
+                                        {quote.status}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-gray-600 mb-1">{quote.description}</p>
+                                    {quote.technician && (
+                                      <p className="text-gray-500">
+                                        By: {quote.technician.name || quote.technician.email} - {new Date(quote.createdAt).toLocaleDateString()}
+                                      </p>
+                                    )}
                                   </div>
                                 ))}
                               </div>
