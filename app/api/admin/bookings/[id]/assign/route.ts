@@ -47,7 +47,11 @@ export async function PUT(
 
     const booking = await prisma.booking.update({
       where: { id: id },
-      data: { assignedTechnicianId: technicianId },
+      data: { 
+        assignedTechnicianId: technicianId,
+        // Update status to CONFIRMED when technician is assigned (if it was PENDING)
+        status: "CONFIRMED",
+      },
       include: { technician: true },
     })
 

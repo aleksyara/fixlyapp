@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
     const bookings = await prisma.booking.findMany({
       where: {
         assignedTechnicianId: technicianId,
-        // Exclude bookings that have quotes (status SUBMITTED_TO_CLIENT)
+        // Exclude bookings that have quotes (status SUBMITTED_TO_CLIENT) and CANCELED/COMPLETED
         status: {
-          not: "SUBMITTED_TO_CLIENT",
+          notIn: ["SUBMITTED_TO_CLIENT", "CANCELED", "COMPLETED"],
         },
       },
       include: {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Also filter out bookings that have quotes (double check)
+    // Filter out bookings that have quotes (these should have status SUBMITTED_TO_CLIENT, but double check)
     const bookingsWithoutQuotes = bookings.filter((booking) => booking.quotes.length === 0)
 
     return NextResponse.json(bookingsWithoutQuotes)
