@@ -161,6 +161,62 @@ export default function TechnicianDashboard() {
     }
   }
 
+  const rescheduleBooking = async (quoteId: string, bookingId: string) => {
+    if (!rescheduleDate || !rescheduleTime) {
+      toast({
+        title: "Error",
+        description: "Please select a date and time",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setReschedulingQuote(quoteId)
+    try {
+      // Convert date to ISO string format (YYYY-MM-DD)
+      const dateStr = rescheduleDate.toISOString().split('T')[0]
+      
+      const response = await fetch(`/api/bookings/${bookingId}/reschedule`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          date: dateStr,
+          time: rescheduleTime,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Booking rescheduled successfully",
+        })
+        setRescheduleDate(undefined)
+        setRescheduleTime("")
+        setReschedulingQuote(null)
+        fetchTechnicianData() // Refresh data
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to reschedule booking",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error rescheduling booking:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    } finally {
+      setReschedulingQuote(null)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "CONFIRMED":
