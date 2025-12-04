@@ -74,7 +74,16 @@ export default function TechnicianDashboard() {
 
       if (bookingsRes.ok) {
         const bookingsData = await bookingsRes.json()
+        console.log("Technician bookings fetched:", bookingsData)
         setBookings(bookingsData)
+      } else {
+        const errorData = await bookingsRes.json()
+        console.error("Error fetching bookings:", errorData)
+        toast({
+          title: "Error",
+          description: errorData.error || "Failed to fetch bookings",
+          variant: "destructive",
+        })
       }
 
       if (quotesRes.ok) {
@@ -83,6 +92,11 @@ export default function TechnicianDashboard() {
       }
     } catch (error) {
       console.error("Error fetching technician data:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch technician data",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }

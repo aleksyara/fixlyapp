@@ -31,6 +31,8 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    console.log(`Found ${bookings.length} bookings for technician ${technicianId}`, bookings.map(b => ({ id: b.id, status: b.status, assignedTechnicianId: b.assignedTechnicianId })))
+
     return NextResponse.json(bookings)
   } catch (error) {
     console.error("Error fetching technician bookings:", error)

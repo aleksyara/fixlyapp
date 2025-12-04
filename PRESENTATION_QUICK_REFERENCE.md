@@ -55,9 +55,16 @@
 ### Admin Demo
 1. [ ] Login as admin → Show dashboard tabs
 2. [ ] Navigate to "All Bookings"
-3. [ ] Assign technician to booking → Show API call
+3. [ ] **Assign technician to booking → Show API call**
+   - **Before clicking**: Point to Network tab, explain what will happen
+   - **Click "Assign Technician"** → Select technician → Click "Assign"
+   - **In Network tab**: Find `PUT /api/admin/bookings/{id}/assign` request
+   - **Show**: Payload (technicianId), Response (updated booking)
+   - **Explain**: Database update, notifications created, email sent
 4. [ ] Show "Manage Technicians" tab
 5. [ ] Optionally create new technician
+
+**📖 Detailed guide**: See `HOW_TO_SHOW_API_CALLS.md` for step-by-step instructions
 
 ### Technician Demo
 1. [ ] Login as technician → Show assigned bookings
