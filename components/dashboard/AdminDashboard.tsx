@@ -106,6 +106,10 @@ export default function AdminDashboard() {
   const [clients, setClients] = useState<any[]>([])
   const [selectedClient, setSelectedClient] = useState<any>(null)
   const [selectedTechnician, setSelectedTechnician] = useState<any>(null)
+  const [showPasswordResetDialog, setShowPasswordResetDialog] = useState(false)
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [updatingPassword, setUpdatingPassword] = useState(false)
 
   useEffect(() => {
     if (user?.id) {
@@ -244,6 +248,77 @@ export default function AdminDashboard() {
       })
     } finally {
       setSendingFollowUp(null)
+    }
+  }
+
+  const updateTechnicianPassword = async () => {
+    if (!selectedTechnician) {
+      return
+    }
+
+    if (!newPassword || !confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Please fill in both password fields",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setUpdatingPassword(true)
+    try {
+      const response = await fetch(`/api/admin/technicians/${selectedTechnician.id}/password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: newPassword }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Password updated successfully",
+        })
+        setShowPasswordResetDialog(false)
+        setNewPassword("")
+        setConfirmPassword("")
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update password",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error updating password:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setUpdatingPassword(false)
     }
   }
 
@@ -897,10 +972,75 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   </div>
+
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowPasswordResetDialog(true)}
+                      className="w-full"
+                    >
+                      Reset Password
+                    </Button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
           )}
+
+          {/* Password Reset Dialog */}
+          <Dialog open={showPasswordResetDialog} onOpenChange={setShowPasswordResetDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reset Password for {selectedTechnician?.name}</DialogTitle>
+                <DialogDescription>
+                  Set a new password for this technician. The password must be at least 6 characters long.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    disabled={updatingPassword}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    disabled={updatingPassword}
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowPasswordResetDialog(false)
+                      setNewPassword("")
+                      setConfirmPassword("")
+                    }}
+                    disabled={updatingPassword}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={updateTechnicianPassword}
+                    disabled={updatingPassword || !newPassword || !confirmPassword}
+                  >
+                    {updatingPassword ? "Updating..." : "Update Password"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
