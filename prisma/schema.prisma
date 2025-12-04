@@ -23,6 +23,7 @@ enum BookingStatus {
   CONFIRMED
   CANCELED
   COMPLETED
+  SUBMITTED_TO_CLIENT
 }
 
 enum QuoteStatus {

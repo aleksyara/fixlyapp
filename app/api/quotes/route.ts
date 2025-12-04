@@ -52,6 +52,12 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Update booking status to SUBMITTED_TO_CLIENT when quote is created
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: "SUBMITTED_TO_CLIENT" },
+    })
+
     // Create notification for admin
     const admins = await prisma.user.findMany({
       where: { role: "ADMIN" },

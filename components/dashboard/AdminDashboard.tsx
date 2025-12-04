@@ -276,6 +276,8 @@ export default function AdminDashboard() {
         return "bg-blue-100 text-blue-800"
       case "PENDING":
         return "bg-yellow-100 text-yellow-800"
+      case "SUBMITTED_TO_CLIENT":
+        return "bg-purple-100 text-purple-800"
       case "APPROVED":
         return "bg-green-100 text-green-800"
       case "REJECTED":
@@ -283,6 +285,13 @@ export default function AdminDashboard() {
       default:
         return "bg-gray-100 text-gray-800"
     }
+  }
+
+  const formatStatus = (status: string) => {
+    if (status === "SUBMITTED_TO_CLIENT") {
+      return "Submitted to Client"
+    }
+    return status
   }
 
   if (loading) {
@@ -403,31 +412,41 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex items-center space-x-2">
                         <Badge className={getStatusColor(booking.status)}>
-                          {booking.status}
+                          {formatStatus(booking.status)}
                         </Badge>
-                        <Dialog 
-                          open={selectedBooking?.id === booking.id} 
-                          onOpenChange={(open) => {
-                            if (!open) {
-                              setSelectedBooking(null)
-                              setSelectedTechnicianId("")
-                            }
-                          }}
-                        >
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedBooking(booking)
-                                // Pre-populate with current technician if reassigning
-                                setSelectedTechnicianId(booking.assignedTechnicianId || "")
-                              }}
-                            >
-                              {booking.assignedTechnicianId ? "Reassign" : "Assign"} Technician
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
+                        {booking.status === "SUBMITTED_TO_CLIENT" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled
+                            title="Cannot reassign technician when quote has been submitted to client"
+                          >
+                            {booking.assignedTechnicianId ? "Reassign" : "Assign"} Technician
+                          </Button>
+                        ) : (
+                          <Dialog 
+                            open={selectedBooking?.id === booking.id} 
+                            onOpenChange={(open) => {
+                              if (!open) {
+                                setSelectedBooking(null)
+                                setSelectedTechnicianId("")
+                              }
+                            }}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedBooking(booking)
+                                  // Pre-populate with current technician if reassigning
+                                  setSelectedTechnicianId(booking.assignedTechnicianId || "")
+                                }}
+                              >
+                                {booking.assignedTechnicianId ? "Reassign" : "Assign"} Technician
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
                             <DialogHeader>
                               <DialogTitle>{booking.assignedTechnicianId ? "Reassign" : "Assign"} Technician to Booking</DialogTitle>
                               <DialogDescription>
@@ -460,6 +479,7 @@ export default function AdminDashboard() {
                             </div>
                           </DialogContent>
                         </Dialog>
+                        )}
                       </div>
                     </div>
                   ))}
