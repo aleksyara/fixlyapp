@@ -503,3 +503,106 @@ export async function sendPasswordResetEmail(email: string, userName: string) {
     throw error;
   }
 }
+
+export interface FollowUpEmailData {
+  customerName: string;
+  customerEmail: string;
+  technicianName: string;
+  quoteAmount: number;
+  quoteDescription: string;
+  serviceType: string;
+  applianceType: string;
+  serviceAddress: string;
+  phone: string;
+  quoteId: string;
+}
+
+export async function sendFollowUpEmail(data: FollowUpEmailData) {
+  const {
+    customerName,
+    customerEmail,
+    technicianName,
+    quoteAmount,
+    quoteDescription,
+    serviceType,
+    applianceType,
+    serviceAddress,
+    phone,
+    quoteId
+  } = data;
+
+  const quoteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/payment/${quoteId}`;
+
+  try {
+    const { data: emailData, error } = await resend.emails.send({
+      from: 'Fixly Appliance Service <noreply@fixlyappliance.com>',
+      to: [customerEmail],
+      subject: `Follow-up on Your Quote - ${serviceType} for ${applianceType}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Follow-up on Your Quote</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }
+            .quote-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb; }
+            .button { display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
+            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>📧 Follow-up on Your Quote</h1>
+            <p>Your technician is following up on your service quote</p>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${customerName || 'there'}!</h2>
+            <p>This is a follow-up from your technician <strong>${technicianName}</strong> regarding your service quote.</p>
+            
+            <div class="quote-details">
+              <h3>💰 Quote Details</h3>
+              <p><strong>Amount:</strong> $${quoteAmount.toFixed(2)}</p>
+              <p><strong>Description:</strong> ${quoteDescription}</p>
+              <p><strong>Service:</strong> ${serviceType} - ${applianceType}</p>
+              <p><strong>Service Address:</strong> ${serviceAddress}</p>
+            </div>
+
+            <h3>Next Steps</h3>
+            <p>If you have any questions about this quote or would like to proceed with the service, please don't hesitate to reach out:</p>
+            
+            <a href="${quoteUrl}" class="button">💳 View & Pay Quote</a>
+
+            <div class="footer">
+              <p><strong>Contact Information:</strong></p>
+              <p>• <strong>Phone:</strong> ${phone}</p>
+              <p>• <strong>Technician:</strong> ${technicianName}</p>
+              
+              <p style="margin-top: 20px;">
+                <strong>Fixly Appliance Service</strong><br>
+                Professional appliance installation and repair<br>
+                Phone: (949) 877-9522<br>
+                Email: fixlyappliances@gmail.com
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('Email sending failed:', error);
+      throw new Error('Failed to send follow-up email');
+    }
+
+    return emailData;
+  } catch (error) {
+    console.error('Email service error:', error);
+    throw error;
+  }
+}

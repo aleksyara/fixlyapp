@@ -57,7 +57,11 @@ interface Technician {
   address?: string
   technicianStatus?: string
   technicianBookings?: any[]
-  quotes?: any[]
+  quotes?: Array<{
+    id: string
+    status: string
+    amount: number
+  }>
 }
 
 interface Notification {
@@ -343,6 +347,36 @@ export default function AdminDashboard() {
         </TabsList>
 
         <TabsContent value="bookings" className="space-y-4">
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Total Bookings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{bookings.length}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Quotes Submitted</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{quotes.length}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Total Quotes Amount</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ${quotes.reduce((sum, quote) => sum + quote.amount, 0).toFixed(2)}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>All Bookings</CardTitle>
@@ -448,18 +482,36 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                   {quotes.map((quote) => (
                     <div key={quote.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <p className="font-medium">Quote #{quote.id.slice(-8)}</p>
-                        <p className="text-sm text-gray-600">${quote.amount.toFixed(2)}</p>
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">Quote #{quote.id.slice(-8)}</p>
+                            <p className="text-lg font-semibold text-blue-600">${quote.amount.toFixed(2)}</p>
+                          </div>
+                          <Badge className={getStatusColor(quote.status)}>
+                            {quote.status}
+                          </Badge>
+                        </div>
                         <p className="text-sm text-gray-600">{quote.description}</p>
-                        <p className="text-xs text-gray-500">
-                          By: {quote.technician.name} - For: {quote.booking.customerName} - {new Date(quote.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge className={getStatusColor(quote.status)}>
-                          {quote.status}
-                        </Badge>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 pt-2 border-t">
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">Client Information</p>
+                            <p className="text-sm text-gray-700">{quote.booking.customerName}</p>
+                            <p className="text-sm text-gray-600">{quote.booking.customerEmail}</p>
+                            <p className="text-sm text-gray-600">Phone: {quote.booking.phone}</p>
+                            <p className="text-sm text-gray-600">{quote.booking.serviceAddress}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">Service Details</p>
+                            <p className="text-sm text-gray-700">{quote.booking.serviceType} - {quote.booking.applianceType}</p>
+                            <p className="text-sm text-gray-600">
+                              {new Date(quote.booking.date).toLocaleDateString()} at {quote.booking.startTime}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              By: {quote.technician.name} - {new Date(quote.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -729,7 +781,7 @@ export default function AdminDashboard() {
                   
                   <div>
                     <Label className="text-sm font-medium">Statistics</Label>
-                    <div className="mt-2 grid grid-cols-3 gap-4">
+                    <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="text-center p-3 border rounded-lg">
                         <p className="text-2xl font-bold text-blue-600">{selectedTechnician.technicianBookings?.length || 0}</p>
                         <p className="text-xs text-gray-600">Total Bookings</p>
@@ -743,6 +795,12 @@ export default function AdminDashboard() {
                           {selectedTechnician.quotes?.filter((q: any) => q.status === 'PAID').length || 0}
                         </p>
                         <p className="text-xs text-gray-600">Paid Quotes</p>
+                      </div>
+                      <div className="text-center p-3 border rounded-lg">
+                        <p className="text-2xl font-bold text-orange-600">
+                          ${(selectedTechnician.quotes?.reduce((sum: number, q: any) => sum + (q.amount || 0), 0) || 0).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-600">Total Quotes Amount</p>
                       </div>
                     </div>
                   </div>

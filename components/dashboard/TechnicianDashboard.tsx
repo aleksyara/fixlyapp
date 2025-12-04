@@ -6,13 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, FileText, Users, Clock } from "lucide-react"
+import { Calendar, FileText, Users, Clock, Mail } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import TechnicianCalendar from "@/components/TechnicianCalendar"
+import { useToast } from "@/hooks/use-toast"
 
 interface Booking {
   id: string
@@ -40,10 +41,12 @@ interface Quote {
 export default function TechnicianDashboard() {
   const { user } = useAuth()
   const router = useRouter()
+  const { toast } = useToast()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [sendingFollowUp, setSendingFollowUp] = useState<string | null>(null)
   const [quoteForm, setQuoteForm] = useState({
     amount: "",
     description: ""
@@ -97,9 +100,58 @@ export default function TechnicianDashboard() {
         setQuoteForm({ amount: "", description: "" })
         setSelectedBooking(null)
         fetchTechnicianData() // Refresh data
+        toast({
+          title: "Success",
+          description: "Quote created successfully",
+        })
+      } else {
+        const data = await response.json()
+        toast({
+          title: "Error",
+          description: data.error || "Failed to create quote",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error("Error creating quote:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const sendFollowUp = async (quoteId: string) => {
+    setSendingFollowUp(quoteId)
+    try {
+      const response = await fetch(`/api/quotes/${quoteId}/follow-up`, {
+        method: "POST",
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Follow-up email sent successfully",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to send follow-up email",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error sending follow-up:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingFollowUp(null)
     }
   }
 
@@ -132,21 +184,55 @@ export default function TechnicianDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-lg border">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium">Assigned: <span className="font-bold text-lg">{bookings.length}</span></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium">Pending: <span className="font-bold text-lg">{quotes.filter(q => q.status === "PENDING").length}</span></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium">Completed: <span className="font-bold text-lg">
-            {bookings.filter(b => b.status === "COMPLETED" && new Date(b.date).toDateString() === new Date().toDateString()).length}
-          </span></span>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              <div>
+                <p className="text-sm text-gray-600">Assigned</p>
+                <p className="text-2xl font-bold">{bookings.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-gray-500" />
+              <div>
+                <p className="text-sm text-gray-600">Pending Orders</p>
+                <p className="text-2xl font-bold">{quotes.filter(q => q.status === "PENDING").length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-green-500" />
+              <div>
+                <p className="text-sm text-gray-600">Total Quotes Amount</p>
+                <p className="text-2xl font-bold text-green-600">
+                  ${quotes.filter(q => q.status === "PENDING").reduce((sum, q) => sum + q.amount, 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-500" />
+              <div>
+                <p className="text-sm text-gray-600">Completed Today</p>
+                <p className="text-2xl font-bold">
+                  {bookings.filter(b => b.status === "COMPLETED" && new Date(b.date).toDateString() === new Date().toDateString()).length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="bookings" className="space-y-4">
@@ -259,19 +345,47 @@ export default function TechnicianDashboard() {
               ) : (
                 <div className="space-y-4">
                   {quotes.map((quote) => (
-                    <div key={quote.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <p className="font-medium">Quote #{quote.id.slice(-8)}</p>
-                        <p className="text-sm text-gray-600">${quote.amount.toFixed(2)}</p>
-                        <p className="text-sm text-gray-600">{quote.description}</p>
-                        <p className="text-xs text-gray-500">
-                          For: {quote.booking.customerName} - {new Date(quote.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
+                    <div key={quote.id} className="p-4 border rounded-lg">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-medium">Quote #{quote.id.slice(-8)}</p>
+                          <p className="text-lg font-semibold text-blue-600">${quote.amount.toFixed(2)}</p>
+                        </div>
                         <Badge className={getStatusColor(quote.status)}>
                           {quote.status}
                         </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">{quote.description}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3 pt-3 border-t">
+                        <div>
+                          <p className="text-xs font-medium text-gray-500">Client Information</p>
+                          <p className="text-sm text-gray-700">{quote.booking.customerName}</p>
+                          <p className="text-sm text-gray-600">{quote.booking.customerEmail}</p>
+                          <p className="text-sm text-gray-600">Phone: {quote.booking.phone}</p>
+                          <p className="text-sm text-gray-600">{quote.booking.serviceAddress}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-500">Service Details</p>
+                          <p className="text-sm text-gray-700">{quote.booking.serviceType} - {quote.booking.applianceType}</p>
+                          <p className="text-sm text-gray-600">
+                            {new Date(quote.booking.date).toLocaleDateString()} at {quote.booking.startTime}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Created: {new Date(quote.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={() => sendFollowUp(quote.id)}
+                          disabled={sendingFollowUp === quote.id}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Mail className="h-4 w-4" />
+                          {sendingFollowUp === quote.id ? "Sending..." : "Follow Up"}
+                        </Button>
                       </div>
                     </div>
                   ))}
