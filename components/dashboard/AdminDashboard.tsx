@@ -86,6 +86,7 @@ export default function AdminDashboard() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [selectedTechnicianId, setSelectedTechnicianId] = useState("")
   const [assigningTechnician, setAssigningTechnician] = useState(false)
+  const [sendingFollowUp, setSendingFollowUp] = useState<string | null>(null)
   const [showCreateUserDialog, setShowCreateUserDialog] = useState(false)
   const [newUser, setNewUser] = useState({
     firstName: '',
