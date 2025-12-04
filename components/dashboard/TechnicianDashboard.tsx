@@ -193,24 +193,25 @@ export default function TechnicianDashboard() {
       if (response.ok) {
         toast({
           title: "Success",
-          description: "Booking rescheduled successfully",
+          description: "Booking rescheduled successfully. The client has been notified.",
         })
         setRescheduleDate(undefined)
         setRescheduleTime("")
         setReschedulingQuoteId(null)
         fetchTechnicianData() // Refresh data
       } else {
+        const errorMessage = data.error || "Failed to reschedule booking"
         toast({
-          title: "Error",
-          description: data.error || "Failed to reschedule booking",
+          title: "Reschedule Failed",
+          description: errorMessage,
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error rescheduling booking:", error)
       toast({
-        title: "Error",
-        description: "An unexpected error occurred",
+        title: "Network Error",
+        description: error?.message || "Failed to connect to the server. Please check your internet connection and try again.",
         variant: "destructive",
       })
     } finally {
