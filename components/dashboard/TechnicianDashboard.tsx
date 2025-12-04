@@ -29,6 +29,8 @@ interface Booking {
   customerEmail: string
   serviceAddress: string
   phone: string
+  quotesCount?: number
+  hasQuote?: boolean
 }
 
 interface Quote {
@@ -67,21 +69,42 @@ export default function TechnicianDashboard() {
 
   const fetchTechnicianData = async () => {
     try {
+      console.log("🔍 TechnicianDashboard - Fetching data for user:", {
+        userId: user?.id,
+        userEmail: user?.email,
+        userRole: user?.role,
+      })
+
+      const bookingsUrl = `/api/technician/bookings?technicianId=${user.id}`
+      console.log("🔍 Fetching bookings from:", bookingsUrl)
+
       const [bookingsRes, quotesRes] = await Promise.all([
-        fetch(`/api/technician/bookings?technicianId=${user.id}`),
+        fetch(bookingsUrl),
         fetch(`/api/technician/quotes?technicianId=${user.id}`)
       ])
 
+      console.log("🔍 Bookings response:", {
+        ok: bookingsRes.ok,
+        status: bookingsRes.status,
+        statusText: bookingsRes.statusText,
+      })
+
       if (bookingsRes.ok) {
         const bookingsData = await bookingsRes.json()
-        console.log("Technician bookings fetched:", bookingsData)
+        console.log("✅ Technician bookings fetched:", {
+          count: bookingsData.length,
+          bookings: bookingsData,
+        })
         setBookings(bookingsData)
       } else {
-        const errorData = await bookingsRes.json()
-        console.error("Error fetching bookings:", errorData)
+        const errorData = await bookingsRes.json().catch(() => ({ error: "Unknown error" }))
+        console.error("❌ Error fetching bookings:", {
+          status: bookingsRes.status,
+          error: errorData,
+        })
         toast({
           title: "Error",
-          description: errorData.error || "Failed to fetch bookings",
+          description: errorData.error || `Failed to fetch bookings (${bookingsRes.status})`,
           variant: "destructive",
         })
       }
@@ -91,10 +114,10 @@ export default function TechnicianDashboard() {
         setQuotes(quotesData)
       }
     } catch (error) {
-      console.error("Error fetching technician data:", error)
+      console.error("❌ Error fetching technician data:", error)
       toast({
         title: "Error",
-        description: "Failed to fetch technician data",
+        description: `Failed to fetch technician data: ${error instanceof Error ? error.message : "Unknown error"}`,
         variant: "destructive",
       })
     } finally {
@@ -324,7 +347,7 @@ export default function TechnicianDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Assigned Bookings</CardTitle>
-              <CardDescription>Your upcoming and completed appointments</CardDescription>
+              <CardDescription>All bookings assigned to you regardless of status</CardDescription>
             </CardHeader>
             <CardContent>
               {bookings.length === 0 ? (
