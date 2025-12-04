@@ -50,7 +50,8 @@ export default function TechnicianDashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [sendingFollowUp, setSendingFollowUp] = useState<string | null>(null)
-  const [reschedulingQuote, setReschedulingQuote] = useState<string | null>(null)
+  const [reschedulingQuoteId, setReschedulingQuoteId] = useState<string | null>(null)
+  const [reschedulingInProgress, setReschedulingInProgress] = useState<string | null>(null)
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined)
   const [rescheduleTime, setRescheduleTime] = useState<string>("")
   const [quoteForm, setQuoteForm] = useState({
@@ -171,7 +172,7 @@ export default function TechnicianDashboard() {
       return
     }
 
-    setReschedulingQuote(quoteId)
+    setReschedulingInProgress(quoteId)
     try {
       // Convert date to ISO string format (YYYY-MM-DD)
       const dateStr = rescheduleDate.toISOString().split('T')[0]
@@ -196,7 +197,7 @@ export default function TechnicianDashboard() {
         })
         setRescheduleDate(undefined)
         setRescheduleTime("")
-        setReschedulingQuote(null)
+        setReschedulingQuoteId(null)
         fetchTechnicianData() // Refresh data
       } else {
         toast({
@@ -213,7 +214,7 @@ export default function TechnicianDashboard() {
         variant: "destructive",
       })
     } finally {
-      setReschedulingQuote(null)
+      setReschedulingInProgress(null)
     }
   }
 
@@ -449,14 +450,14 @@ export default function TechnicianDashboard() {
                           {sendingFollowUp === quote.id ? "Sending..." : "Follow Up"}
                         </Button>
                         <Dialog 
-                          open={reschedulingQuote === quote.id}
+                          open={reschedulingQuoteId === quote.id}
                           onOpenChange={(open) => {
                             if (!open) {
-                              setReschedulingQuote(null)
+                              setReschedulingQuoteId(null)
                               setRescheduleDate(undefined)
                               setRescheduleTime("")
                             } else {
-                              setReschedulingQuote(quote.id)
+                              setReschedulingQuoteId(quote.id)
                               setRescheduleDate(fromISODateLocal(quote.booking.date))
                             }
                           }}
@@ -466,9 +467,10 @@ export default function TechnicianDashboard() {
                               variant="outline"
                               size="sm"
                               className="flex items-center gap-2"
+                              disabled={reschedulingInProgress === quote.id}
                             >
                               <CalendarClock className="h-4 w-4" />
-                              Reschedule
+                              {reschedulingInProgress === quote.id ? "Rescheduling..." : "Reschedule"}
                             </Button>
                           </DialogTrigger>
                           <DialogContent className="max-w-md">
@@ -497,18 +499,19 @@ export default function TechnicianDashboard() {
                                 <Button
                                   variant="outline"
                                   onClick={() => {
-                                    setReschedulingQuote(null)
+                                    setReschedulingQuoteId(null)
                                     setRescheduleDate(undefined)
                                     setRescheduleTime("")
                                   }}
+                                  disabled={reschedulingInProgress === quote.id}
                                 >
                                   Cancel
                                 </Button>
                                 <Button
                                   onClick={() => rescheduleBooking(quote.id, quote.bookingId)}
-                                  disabled={!rescheduleDate || !rescheduleTime || reschedulingQuote === quote.id}
+                                  disabled={!rescheduleDate || !rescheduleTime || reschedulingInProgress === quote.id}
                                 >
-                                  {reschedulingQuote === quote.id ? "Rescheduling..." : "Reschedule"}
+                                  {reschedulingInProgress === quote.id ? "Rescheduling..." : "Reschedule"}
                                 </Button>
                               </div>
                             </div>
